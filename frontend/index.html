@@ -20,31 +20,56 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Network Traffic Monitor</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-  <h1>Network Monitor Dashboard</h1>
-  <div id="speedometer">
-    Incoming: <span id="incoming">0</span> kbps |
-    Outgoing: <span id="outgoing">0</span> kbps
-  </div>
-  <div id="charts">
-    <canvas id="barChart" width="400"></canvas>
-    <canvas id="protoChart" width="400"></canvas>
-  </div>
-  <div id="tableContainer">
-    <table id="trafficTable">
-      <thead>
-        <tr>
-          <th>Time</th><th>Src IP</th><th>Dst IP</th><th>Port</th><th>Protocol</th><th>Bytes</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
-  </div>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <header>
+    <h1>📡 Network Monitor Dashboard</h1>
+    <div id="speedometer">
+      🔻 Incoming: <span id="incoming">0</span> kbps |
+      🔺 Outgoing: <span id="outgoing">0</span> kbps
+    </div>
+  </header>
+
+  <main class="dashboard-grid">
+    <section class="chart-card">
+      <h2> Top IPs</h2>
+      <canvas id="barChart"></canvas>
+    </section>
+    <section class="chart-card">
+      <h2>📶 Protocol Usage</h2>
+      <canvas id="protoChart"></canvas>
+    </section>
+
+    <section class="table-section">
+      <h2>📋 Recent Traffic</h2>
+      <div id="tableContainer">
+        <table id="trafficTable">
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Src IP</th>
+              <th>Dst IP</th>
+              <th>Port</th>
+              <th>Protocol</th>
+              <th>Bytes</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p>&copy; Network Traffic Monitor 🚀</p>
+  </footer>
+
   <script src="renderer.js"></script>
 </body>
 </html>
+

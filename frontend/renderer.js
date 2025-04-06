@@ -41,44 +41,38 @@
 
 
 // // After JSon///
-const fetchData = async () => {
-  try {
-    const res = await fetch("http://localhost:5000/api/data");
-    const data = await res.json();
+const API_URL = "http://localhost:5000/api/data";
 
-    // Update speed
-    document.getElementById("incoming").innerText = data.speed.incoming_kbps;
-    document.getElementById("outgoing").innerText = data.speed.outgoing_kbps;
-
-    // Update charts
-    updateBarChart(data.top_ips);
-    updateProtoChart(data.protocol_distribution);
-
-    // Update table
-    const tbody = document.querySelector("#trafficTable tbody");
-    tbody.innerHTML = "";
-    data.traffic_table.slice(-20).reverse().forEach(entry => {
-      const row = `<tr>
-        <td>${entry.timestamp}</td>
-        <td>${entry.src_ip}</td>
-        <td>${entry.dst_ip}</td>
-        <td>${entry.dst_port}</td>
-        <td>${entry.protocol}</td>
-        <td>${entry.bytes}</td>
-      </tr>`;
-      tbody.innerHTML += row;
-    });
-  } catch (e) {
-    console.error("Failed to fetch data:", e);
-  }
-};
-
+// Initialize Chart instances
 let barChart, protoChart;
 
-function updateBarChart(data) {
+// Fetch and update UI every second
+setInterval(fetchData, 1000);
+
+async function fetchData() {
+  try {
+    const response = await fetch(API_URL);
+    const data = await response.json();
+
+    updateSpeed(data.speed);
+    updateBarChart(data.top_ips);
+    updateProtoChart(data.protocol_distribution);
+    updateTrafficTable(data.traffic_table);
+  } catch (error) {
+    console.error("Error fetching data:", error);
+  }
+}
+
+function updateSpeed(speed) {
+  document.getElementById("incoming").innerText = speed.incoming_kbps;
+  document.getElementById("outgoing").innerText = speed.outgoing_kbps;
+}
+
+function updateBarChart(topIps) {
   const ctx = document.getElementById("barChart").getContext("2d");
-  const labels = Object.keys(data);
-  const values = Object.values(data);
+  const labels = Object.keys(topIps);
+  const values = Object.values(topIps);
+
   if (barChart) barChart.destroy();
   barChart = new Chart(ctx, {
     type: "bar",
@@ -89,27 +83,64 @@ function updateBarChart(data) {
         data: values,
         backgroundColor: "rgba(54, 162, 235, 0.7)"
       }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false }
+      }
     }
   });
 }
 
-function updateProtoChart(data) {
+function updateProtoChart(protoData) {
   const ctx = document.getElementById("protoChart").getContext("2d");
-  const labels = Object.keys(data);
-  const values = Object.values(data);
+  const labels = Object.keys(protoData);
+  const values = Object.values(protoData);
+
   if (protoChart) protoChart.destroy();
   protoChart = new Chart(ctx, {
-    type: "bar",
+    type: "doughnut",
     data: {
       labels,
       datasets: [{
-        label: "Protocols (Bytes)",
+        label: "Protocol Distribution",
         data: values,
-        backgroundColor: "rgba(255, 99, 132, 0.7)"
+        backgroundColor: [
+          "rgba(255, 99, 132, 0.6)",
+          "rgba(255, 159, 64, 0.6)",
+          "rgba(255, 205, 86, 0.6)",
+          "rgba(75, 192, 192, 0.6)",
+          "rgba(54, 162, 235, 0.6)",
+          "rgba(153, 102, 255, 0.6)"
+        ]
       }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: {
+          position: "bottom"
+        }
+      }
     }
   });
 }
 
-// Poll every second
-setInterval(fetchData, 1000);
+function updateTrafficTable(entries) {
+  const tbody = document.querySelector("#trafficTable tbody");
+  tbody.innerHTML = "";
+
+  entries.slice(-20).reverse().forEach(entry => {
+    const row = document.createElement("tr");
+    row.innerHTML = `
+      <td>${entry.timestamp}</td>
+      <td>${entry.src_ip}</td>
+      <td>${entry.dst_ip}</td>
+      <td>${entry.dst_port}</td>
+      <td>${entry.protocol}</td>
+      <td>${entry.bytes}</td>
+    `;
+    tbody.appendChild(row);
+  });
+}
