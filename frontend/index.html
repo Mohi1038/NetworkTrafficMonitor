@@ -1,0 +1,50 @@
+<!-- <!DOCTYPE html>
+<html>
+<head>
+  <title>Network Monitor</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <h1>Network Traffic Monitor</h1>
+  <div id="speed"></div>
+  <div id="area-chart"></div>
+  <div id="top-devices"></div>
+  <div id="protocols"></div>
+  <div id="traffic-table"></div>
+  <script src="renderer.js"></script>
+</body>
+</html> -->
+
+
+<!-- After JSON -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Network Traffic Monitor</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <h1>Network Monitor Dashboard</h1>
+  <div id="speedometer">
+    Incoming: <span id="incoming">0</span> kbps |
+    Outgoing: <span id="outgoing">0</span> kbps
+  </div>
+  <div id="charts">
+    <canvas id="barChart" width="400"></canvas>
+    <canvas id="protoChart" width="400"></canvas>
+  </div>
+  <div id="tableContainer">
+    <table id="trafficTable">
+      <thead>
+        <tr>
+          <th>Time</th><th>Src IP</th><th>Dst IP</th><th>Port</th><th>Protocol</th><th>Bytes</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="renderer.js"></script>
+</body>
+</html>
