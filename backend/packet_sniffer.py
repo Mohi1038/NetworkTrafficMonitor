@@ -76,7 +76,7 @@ from scapy.all import sniff, IP, IPv6, TCP, UDP, ARP, Ether
 from traffic_analyzer import update_stats
 from utils import get_active_ip
 
-ifac, my_ip = get_active_ip()
+ifac,my_ip = get_active_ip()
 
 def is_irrelevant_packet(packet, size):
     # ARP or broadcast MACs
@@ -109,6 +109,7 @@ def is_irrelevant_packet(packet, size):
             return True
 
     return False  # keep packet
+
 
 def process_packet(packet):
     try:
@@ -167,5 +168,11 @@ def process_packet(packet):
     except Exception as e:
         print("[ERROR processing packet]", e)
 
+from pathlib import Path
+import json
+from collections import defaultdict
+
+DATA_FILE = "network_data.json"
 def start_sniffing():
     sniff(iface=ifac, prn=process_packet, store=False)
+

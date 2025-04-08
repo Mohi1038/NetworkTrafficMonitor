@@ -23,8 +23,45 @@ from flask import Flask, jsonify
 import threading
 import os
 from packet_sniffer import start_sniffing
+from utils import stats
+from pathlib import Path
+import json
+from collections import defaultdict
 
 app = Flask(__name__)
+
+DATA_FILE = "network_data.json"
+# Ensure file exists once
+
+def temp():
+    if not Path(DATA_FILE).exists():
+    
+        with open(DATA_FILE, "w") as f:
+            json.dump({}, f)
+
+        stats.update({
+        "total_incoming_bytes": 0,
+        "total_outgoing_bytes": 0,
+        "speed": {"incoming_kbps": 0, "outgoing_kbps": 0},
+        "protocol_distribution": defaultdict(int),
+        # "top_ips": defaultdict(int),
+        # "top_ips": defaultdict(lambda: {"hostname": "", "app": "", "total_bytes": 0}),
+        "top_ips": defaultdict(lambda: {"hostname": "", "app": "", "incoming_bytes": 0, "outgoing_bytes": 0}),
+        
+        "traffic_table": []
+        })
+    else:
+        with open("network_data.json", 'r') as file:
+            data = defaultdict(int)
+            data = json.load(file)
+            stats["speed"] = data["speed"]
+            stats['total_incoming_bytes'] = data['total_incoming_bytes']
+            stats['protocol_distribution'] = data['protocol_distribution']
+            stats['total_outgoing_bytes'] = data['total_outgoing_bytes']
+            stats['top_ips'] = data['top_ips']
+            stats['traffic_table'] = data['traffic_table']
+    return
+
 
 @app.route("/api/data")
 def get_data():
@@ -39,4 +76,5 @@ def get_data():
 threading.Thread(target=start_sniffing, daemon=True).start()
 
 if __name__ == "__main__":
+    temp()
     app.run(port=5000, debug=True)
