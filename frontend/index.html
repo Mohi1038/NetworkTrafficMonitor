@@ -17,59 +17,91 @@
 
 
 <!-- After JSON -->
-<!DOCTYPE html>
+<!-- <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="UTF-8">
   <title>Network Traffic Monitor</title>
-  <link rel="stylesheet" href="style.css" />
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <header>
-    <h1>📡 Network Monitor Dashboard</h1>
-    <div id="speedometer">
-      🔻 Incoming: <span id="incoming">0</span> kbps |
-      🔺 Outgoing: <span id="outgoing">0</span> kbps
-    </div>
-  </header>
-
-  <main class="dashboard-grid">
-    <section class="chart-card">
-      <h2> Top IPs</h2>
-      <canvas id="barChart"></canvas>
-    </section>
-    <section class="chart-card">
-      <h2>📶 Protocol Usage</h2>
-      <canvas id="protoChart"></canvas>
-    </section>
-
-    <section class="table-section">
-      <h2>📋 Recent Traffic</h2>
-      <div id="tableContainer">
-        <table id="trafficTable">
-          <thead>
-            <tr>
-              <th>Time</th>
-              <th>Src IP</th>
-              <th>Dst IP</th>
-              <th>Port</th>
-              <th>Protocol</th>
-              <th>Bytes</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-      </div>
-    </section>
-  </main>
-
-  <footer>
-    <p>&copy; Network Traffic Monitor 🚀</p>
-  </footer>
-
+  <h1>Network Monitor Dashboard</h1>
+  <div id="speedometer">
+    Incoming: <span id="incoming">0</span> kbps |
+    Outgoing: <span id="outgoing">0</span> kbps
+  </div>
+  <div id="charts">
+    <canvas id="barChart" width="400"></canvas>
+    <canvas id="protoChart" width="400"></canvas>
+  </div>
+  <div id="tableContainer">
+    <table id="trafficTable">
+      <thead>
+        <tr>
+          <th>Time</th><th>Src IP</th><th>Dst IP</th><th>Port</th><th>Protocol</th><th>Bytes</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="renderer.js"></script>
 </body>
-</html>
+</html> -->
 
+
+<!-- traffic, speedometer -->
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Network Traffic Monitor</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+  <h1>Network Traffic Monitor</h1>
+
+  <div class="dashboard">
+    <div class="chart-container">
+      <canvas id="trafficChart"></canvas>
+    </div>
+
+    <div class="speedometers">
+      <div class="speedometer">
+        <h3>Download Speed (kbps)</h3>
+        <canvas id="incomingSpeedo"></canvas>
+      </div>
+      <div class="speedometer">
+        <h3>Upload Speed (kbps)</h3>
+        <canvas id="outgoingSpeedo"></canvas>
+      </div>
+    </div>
+
+    <!-- Top Bandwidth Usage Bar Chart -->
+    <div class="chart-container">
+      <h3>Top Apps / Websites / Devices by Bandwidth</h3>
+      <div class="toggle-container">
+        <label for="bandwidthToggle">Show Bandwidth:</label>
+        <select id="bandwidthToggle">
+          <option value="incoming_bytes">Incoming</option>
+          <option value="outgoing_bytes">Outgoing</option>
+        </select>
+      </div>      
+      <canvas id="topBandwidthChart"></canvas>
+    </div>
+
+    <div class="chart-section">
+      <h3>Protocol Distribution</h3>
+      <canvas id="protocolChart" width="400" height="300"></canvas>
+    </div>
+    
+
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="renderer.js"></script>
+</body>
+
+</html>
