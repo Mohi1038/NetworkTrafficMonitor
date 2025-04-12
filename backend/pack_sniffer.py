@@ -206,8 +206,12 @@ def predict_flows(flow_features):
 
 # Combined handler
 def combined_packet_handler(pkt):
+    size = len(bytes(pkt))
+    if is_irrelevant_packet(pkt, size):
+        return 
     process_packet_json(pkt)
     process_packet_flow(pkt)
+
 
 # Timer-based prediction
 def run_prediction_after_interval(interval_sec):
