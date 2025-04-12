@@ -1,4 +1,3 @@
-
 # ####### After JSON #####
 import json
 import time
@@ -155,7 +154,10 @@ def json_writer_loop():
         save_to_json()
 
 def update_speed_loop():
-    prev_in, prev_out = 0, 0
+    with lock:
+        prev_in = stats["total_incoming_bytes"]
+        prev_out = stats["total_outgoing_bytes"]
+        
     while True:
         time.sleep(1)
         with lock:
@@ -164,7 +166,7 @@ def update_speed_loop():
             stats["speed"]["incoming_kbps"] = round((curr_in - prev_in) * 8 / 1000, 2)
             stats["speed"]["outgoing_kbps"] = round((curr_out - prev_out) * 8 / 1000, 2)
             prev_in, prev_out = curr_in, curr_out
-
+            
 load_existing_data()
 
 # Start both background threads safely
