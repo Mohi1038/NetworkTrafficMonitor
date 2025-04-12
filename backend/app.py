@@ -22,7 +22,7 @@
 from flask import Flask, jsonify
 import threading
 import os
-from packet_sniffer import start_sniffing
+from ml_model.packet_sniffer_2 import start_sniffing
 from utils import stats
 from pathlib import Path
 import json
