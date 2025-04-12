@@ -11,7 +11,7 @@ import warnings
 
 warnings.filterwarnings("ignore")
 
-# Load model, scaler, PCA
+# Load model, scaler, PCA (FIXED PATHS)
 model = joblib.load("./backend/ml_model/ml _model/rf_model.pkl")
 scaler = joblib.load("./backend/ml_model/ml _model/scaler.pkl")
 pca = joblib.load("./backend/ml_model/ml _model/pca.pkl")
@@ -20,7 +20,15 @@ print("[+] Model, scaler, PCA loaded.")
 # Get interface and local IP
 iface, my_ip = get_active_ip()
 
-# ---- Real-time Packet Processing for JSON Update ---- #
+# Global callback holder
+alert_callback = None
+
+def set_alert_callback(callback):
+    global alert_callback
+    alert_callback = callback
+    print("[+] Alert callback set successfully.")
+
+# Filter out noisy/irrelevant packets
 def is_irrelevant_packet(packet, size):
     if packet.haslayer(ARP):
         return True
@@ -45,11 +53,10 @@ def is_irrelevant_packet(packet, size):
             return True
     return False
 
+# JSON-like update handler
 def process_packet_json(packet):
     try:
         size = len(bytes(packet))
-        # if is_irrelevant_packet(packet, size):
-        #     return
         src_ip, dst_ip = "N/A", "N/A"
         src_port, dst_port = "N/A", "N/A"
         protocol = "UNKNOWN"
@@ -99,7 +106,7 @@ def process_packet_json(packet):
     except Exception as e:
         print("[ERROR processing packet]", e)
 
-# ---- Flow-Based ML Processing ---- #
+# Flow feature tracker
 flows = defaultdict(lambda: {
     'start_time': None,
     'last_time': None,
@@ -113,6 +120,7 @@ flows = defaultdict(lambda: {
     'win_list': []
 })
 
+# Flow processor
 def process_packet_flow(pkt):
     if not pkt.haslayer(IP):
         return
@@ -147,6 +155,7 @@ def process_packet_flow(pkt):
         if flags & 0x10:
             f['ack_count'] += 1
 
+# Feature extractor
 def extract_flow_features(flows):
     records = []
     for (src, dst, sp, dp, proto), f in flows.items():
@@ -176,6 +185,7 @@ def extract_flow_features(flows):
         records.append((src, dst, proto, features))
     return records
 
+# ML Prediction
 def predict_flows(flow_features):
     for src, dst, proto, feat in flow_features:
         try:
@@ -186,32 +196,34 @@ def predict_flows(flow_features):
             pred = model.predict(X_pca)[0]
             if pred != "BENIGN":
                 print(f"[⚠️] Attack detected: {pred} from {src} to {dst} ({proto})")
+                if alert_callback:
+                    print("[CALLBACK DEBUG] Triggering alert callback...")
+                    alert_callback(pred, src, dst, proto)
             else:
                 print(f"[✅] Flow from {src} to {dst} is benign ({proto})")
         except Exception as e:
             print("[Prediction Error]", e)
 
-# ---- Combined Sniff Handler ---- #
+# Combined handler
 def combined_packet_handler(pkt):
     process_packet_json(pkt)
     process_packet_flow(pkt)
 
-# ---- Prediction Timer ---- #
+# Timer-based prediction
 def run_prediction_after_interval(interval_sec):
     def delayed_predict():
         while True:
             time.sleep(interval_sec)
-            print("\n[+] 30 seconds passed. Extracting & predicting...\n")
+            print("\n[+] Interval reached. Extracting & predicting...\n")
             features = extract_flow_features(flows)
             predict_flows(features)
 
     threading.Thread(target=delayed_predict, daemon=True).start()
 
-# ---- Start Sniffing ---- #
+# Start sniffing
 print("[*] Starting sniffing on interface:", iface)
-print("[*] Flow prediction will occur after 30 seconds...\n")
 run_prediction_after_interval(10)
 
 def start_sniffing():
-    print("started sniffing")
+    print("[*] Sniffing packets...")
     sniff(iface=iface, prn=combined_packet_handler, store=False)

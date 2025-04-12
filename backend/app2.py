@@ -19,62 +19,68 @@
 
 
 '''After JSON'''
+import time
 from flask import Flask, jsonify
 import threading
-import os
-from pack_sniffer import start_sniffing
+from pack_sniffer import start_sniffing, set_alert_callback
 from utils import stats
 from pathlib import Path
 import json
 from collections import defaultdict
+from alert_mail import alert_callback
 
 app = Flask(__name__)
 
 DATA_FILE = "network_data.json"
-# Ensure file exists once
 
+# ---------- JSON File Init ----------
 def temp():
     if not Path(DATA_FILE).exists():
-    
         with open(DATA_FILE, "w") as f:
             json.dump({}, f)
 
         stats.update({
-        "total_incoming_bytes": 0,
-        "total_outgoing_bytes": 0,
-        "speed": {"incoming_kbps": 0, "outgoing_kbps": 0},
-        "protocol_distribution": defaultdict(int),
-        # "top_ips": defaultdict(int),
-        # "top_ips": defaultdict(lambda: {"hostname": "", "app": "", "total_bytes": 0}),
-        "top_ips": defaultdict(lambda: {"hostname": "", "app": "", "incoming_bytes": 0, "outgoing_bytes": 0}),
-        
-        "traffic_table": []
+            "total_incoming_bytes": 0,
+            "total_outgoing_bytes": 0,
+            "speed": {"incoming_kbps": 0, "outgoing_kbps": 0},
+            "protocol_distribution": defaultdict(int),
+            "top_ips": defaultdict(lambda: {"hostname": "", "app": "", "incoming_bytes": 0, "outgoing_bytes": 0}),
+            "traffic_table": []
         })
     else:
-        with open("network_data.json", 'r') as file:
-            data = defaultdict(int)
+        with open(DATA_FILE, 'r') as file:
             data = json.load(file)
-            stats["speed"] = data["speed"]
-            stats['total_incoming_bytes'] = data['total_incoming_bytes']
-            stats['protocol_distribution'] = data['protocol_distribution']
-            stats['total_outgoing_bytes'] = data['total_outgoing_bytes']
-            stats['top_ips'] = data['top_ips']
-            stats['traffic_table'] = data['traffic_table']
-    return
+            stats["speed"] = data.get("speed", {})
+            stats["total_incoming_bytes"] = data.get("total_incoming_bytes", 0)
+            stats["total_outgoing_bytes"] = data.get("total_outgoing_bytes", 0)
+            stats["protocol_distribution"] = data.get("protocol_distribution", {})
+            stats["top_ips"] = data.get("top_ips", {})
+            stats["traffic_table"] = data.get("traffic_table", [])
 
+set_alert_callback(alert_callback)
 
+threading.Thread(target=start_sniffing, daemon=True).start()
+
+# ---------- Send Email When Flask Starts ----------
+def trigger_test_email():
+    time.sleep(2)
+    print("[INFO] Sending test email from app startup...")
+    alert_callback("DDoS-Test", "127.0.0.1", "127.0.0.1", "TCP")
+
+# ---------- API Endpoint ----------
 @app.route("/api/data")
 def get_data():
-    if not os.path.exists("network_data.json"):
+    if not Path(DATA_FILE).exists():
         return jsonify({"error": "Data file not found"}), 404
 
-    with open("network_data.json") as f:
+    with open(DATA_FILE) as f:
         data = f.read()
     return app.response_class(data, content_type="application/json")
 
-# Start sniffing in background
-threading.Thread(target=start_sniffing, daemon=True).start()
-
 if __name__ == "__main__":
-    # temp()
+    temp()
+
+    # Start the email trigger in a separate thread after a small delay
+    threading.Thread(target=trigger_test_email, daemon=True).start()
+
     app.run(port=5000, debug=True)
