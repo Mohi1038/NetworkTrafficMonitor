@@ -2,3 +2,7 @@ flask
 scapy
 flask-cors
 psutil
+joblib
+numpy
+pandas
+scikit-learn
