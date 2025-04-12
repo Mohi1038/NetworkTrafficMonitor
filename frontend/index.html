@@ -1,56 +1,3 @@
-<!-- <!DOCTYPE html>
-<html>
-<head>
-  <title>Network Monitor</title>
-  <link rel="stylesheet" href="style.css">
-</head>
-<body>
-  <h1>Network Traffic Monitor</h1>
-  <div id="speed"></div>
-  <div id="area-chart"></div>
-  <div id="top-devices"></div>
-  <div id="protocols"></div>
-  <div id="traffic-table"></div>
-  <script src="renderer.js"></script>
-</body>
-</html> -->
-
-
-<!-- After JSON -->
-<!-- <!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>Network Traffic Monitor</title>
-  <link rel="stylesheet" href="style.css">
-</head>
-<body>
-  <h1>Network Monitor Dashboard</h1>
-  <div id="speedometer">
-    Incoming: <span id="incoming">0</span> kbps |
-    Outgoing: <span id="outgoing">0</span> kbps
-  </div>
-  <div id="charts">
-    <canvas id="barChart" width="400"></canvas>
-    <canvas id="protoChart" width="400"></canvas>
-  </div>
-  <div id="tableContainer">
-    <table id="trafficTable">
-      <thead>
-        <tr>
-          <th>Time</th><th>Src IP</th><th>Dst IP</th><th>Port</th><th>Protocol</th><th>Bytes</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
-  </div>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="renderer.js"></script>
-</body>
-</html> -->
-
-
-<!-- traffic, speedometer -->
 <!DOCTYPE html>
 <html lang="en">
 
@@ -58,50 +5,178 @@
   <meta charset="UTF-8">
   <title>Network Traffic Monitor</title>
   <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
 
 <body>
-  <h1>Network Traffic Monitor</h1>
-
-  <div class="dashboard">
-    <div class="chart-container">
-      <canvas id="trafficChart"></canvas>
-    </div>
-
-    <div class="speedometers">
-      <div class="speedometer">
-        <h3>Download Speed (kbps)</h3>
-        <canvas id="incomingSpeedo"></canvas>
+  <header>
+    <h1><i class="fas fa-chart-network"></i> Network Traffic Monitor</h1>
+    <div class="header-content">
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="dashboard">Dashboard</button>
+        <button class="tab-btn" data-tab="traffic-details">Traffic Details</button>
+        <button class="tab-btn" data-tab="settings">Settings</button>
       </div>
-      <div class="speedometer">
-        <h3>Upload Speed (kbps)</h3>
-        <canvas id="outgoingSpeedo"></canvas>
+      <div id="connection-status" class="connection-status online" title="Connected to backend">
+        <i class="fas fa-circle"></i>
       </div>
     </div>
+  </header>
 
-    <!-- Top Bandwidth Usage Bar Chart -->
-    <div class="chart-container">
-      <h3>Top Apps / Websites / Devices by Bandwidth</h3>
-      <div class="toggle-container">
-        <label for="bandwidthToggle">Show Bandwidth:</label>
-        <select id="bandwidthToggle">
-          <option value="incoming_bytes">Incoming</option>
-          <option value="outgoing_bytes">Outgoing</option>
+  <div class="tab-content" id="dashboard">
+    <div class="summary-stats">
+      <div class="stat-card">
+        <div class="stat-title">Total Received</div>
+        <div class="stat-value" id="total-incoming">0 B</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-title">Total Sent</div>
+        <div class="stat-value" id="total-outgoing">0 B</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-title">Active Connections</div>
+        <div class="stat-value" id="active-connections">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-title">Top Protocol</div>
+        <div class="stat-value" id="top-protocol">-</div>
+      </div>
+    </div>
+
+    <div class="dashboard">
+      <div class="chart-container">
+        <h3><i class="fas fa-chart-line"></i> Network Traffic (Real-time)</h3>
+        <canvas id="trafficChart"></canvas>
+      </div>
+
+      <div class="speedometers">
+        <div class="speedometer">
+          <h3>Download Speed (kbps)</h3>
+          <canvas id="incomingSpeedo"></canvas>
+        </div>
+        <div class="speedometer">
+          <h3>Upload Speed (kbps)</h3>
+          <canvas id="outgoingSpeedo"></canvas>
+        </div>
+      </div>
+
+      <div class="charts-row">
+        <div class="chart-section">
+          <h3><i class="fas fa-chart-pie"></i> Protocol Distribution</h3>
+          <canvas id="protocolChart"></canvas>
+        </div>
+
+        <div class="chart-container">
+          <h3><i class="fas fa-network-wired"></i> Top Bandwidth Usage</h3>
+          <div class="toggle-container">
+            <label for="bandwidthToggle">Show Bandwidth:</label>
+            <select id="bandwidthToggle">
+              <option value="incoming_bytes">Incoming</option>
+              <option value="outgoing_bytes">Outgoing</option>
+            </select>
+          </div>      
+          <canvas id="topBandwidthChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tab-content hidden" id="traffic-details">
+    <div class="table-container">
+      <h3><i class="fas fa-table"></i> Network Traffic Details</h3>
+      <div class="table-filters">
+        <input type="text" id="traffic-search" placeholder="Search IP, protocol...">
+        <select id="protocol-filter">
+          <option value="all">All Protocols</option>
+          <option value="TCP">TCP</option>
+          <option value="UDP">UDP</option>
+          <option value="ICMP">ICMP</option>
+          <option value="ARP">ARP</option>
         </select>
-      </div>      
-      <canvas id="topBandwidthChart"></canvas>
+        <select id="direction-filter">
+          <option value="all">All Traffic</option>
+          <option value="incoming">Incoming</option>
+          <option value="outgoing">Outgoing</option>
+        </select>
+      </div>
+      <table id="traffic-table">
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>Source</th>
+            <th>Destination</th>
+            <th>Protocol</th>
+            <th>Port</th>
+            <th>Size</th>
+          </tr>
+        </thead>
+        <tbody id="traffic-tbody">
+          <!-- Table rows will be populated dynamically -->
+        </tbody>
+      </table>
     </div>
+  </div>
 
-    <div class="chart-section">
-      <h3>Protocol Distribution</h3>
-      <canvas id="protocolChart" width="400" height="300"></canvas>
+  <div class="tab-content hidden" id="settings">
+    <div class="settings-container">
+      <h3><i class="fas fa-sliders-h"></i> Display Settings</h3>
+      <div class="setting-group">
+        <label>Chart Update Interval:</label>
+        <select id="update-interval">
+          <option value="1000">1 second</option>
+          <option value="2000" selected>2 seconds</option>
+          <option value="5000">5 seconds</option>
+        </select>
+      </div>
+      <div class="setting-group">
+        <label>Data Points to Show:</label>
+        <input type="range" id="data-points" min="20" max="200" value="100">
+        <span id="data-points-value">100</span>
+      </div>
+      <div class="setting-group">
+        <label>Theme:</label>
+        <select id="theme-selector">
+          <option value="light">Light</option>
+          <option value="dark">Dark</option>
+          <option value="system">System Default</option>
+        </select>
+      </div>
+      <button id="apply-settings" class="btn">Apply Settings</button>
+      
+      <div class="debug-section" style="margin-top: 30px; border-top: 1px solid #ddd; padding-top: 20px;">
+        <h3>Debugging Tools</h3>
+        <button id="debug-charts" class="btn" style="background-color: #e74c3c; margin-right: 10px;">Debug Charts</button>
+        <button id="reload-charts" class="btn" style="background-color: #2ecc71;">Reload Charts</button>
+      </div>
     </div>
-    
-
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      console.log("DOM Loaded. Checking chart elements:");
+      setTimeout(function() {
+        const charts = ['trafficChart', 'protocolChart', 'topBandwidthChart', 'incomingSpeedo', 'outgoingSpeedo'];
+        charts.forEach(id => {
+          const el = document.getElementById(id);
+          console.log(`Chart element ${id} exists:`, !!el);
+          if (el) {
+            console.log(`Dimensions:`, el.offsetWidth, 'x', el.offsetHeight);
+          }
+        });
+      }, 1000);
+      
+      document.getElementById('debug-charts').addEventListener('click', function() {
+        console.log("Chart debug triggered");
+        window.debugCharts && window.debugCharts();
+      });
+      
+      document.getElementById('reload-charts').addEventListener('click', function() {
+        console.log("Chart reload triggered");
+        location.reload();
+      });
+    });
+  </script>
   <script src="renderer.js"></script>
 </body>
-
 </html>
