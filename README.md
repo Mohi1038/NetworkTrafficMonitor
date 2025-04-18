@@ -63,7 +63,17 @@ npm install
 
 ## Running the Application
 
-### 1. Start the backend server (with administrator privileges)
+### Option 1: Quick Start (Recommended)
+1. Simply double-click the `run_network_monitor.bat` file in the root directory.
+2. This will automatically:
+   - Start the backend server with administrator privileges
+   - Wait for the backend to initialize
+   - Launch the frontend application
+
+### Option 2: Manual Startup
+If you prefer to start components individually:
+
+#### 1. Start the backend server (with administrator privileges)
 Open a command prompt as Administrator and run:
 
 ```bash
@@ -71,7 +81,7 @@ cd backend
 python app2.py
 ```
 
-### 2. Start the frontend application
+#### 2. Start the frontend application
 In a new terminal window:
 
 ```bash
