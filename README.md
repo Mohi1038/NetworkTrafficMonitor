@@ -54,6 +54,10 @@ Download and install Npcap from [https://npcap.com/](https://npcap.com/)
 ```bash
 pip install flask scapy numpy pandas joblib psutil
 ```
+or 
+```bash
+pip install -r backend/requirements.txt
+```
 
 ### 4. Install frontend dependencies
 ```bash
