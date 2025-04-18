@@ -2,7 +2,7 @@
 
 A real-time network traffic monitoring application with intrusion detection capabilities. This tool provides visualization of network traffic, protocol distribution analysis, and machine learning-based threat detection.
 
-![Network Traffic Monitor Screenshot](./docs/screenshot.png)
+![Network Traffic Monitor Screenshot](./docs/image_demo.png)
 
 ## Features
 
