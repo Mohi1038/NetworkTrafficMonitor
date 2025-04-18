@@ -1,10 +1,10 @@
 const TRAFFIC_ENDPOINT = "http://127.0.0.1:5000/api/data";
-const maxPoints = 100; // Keep this as the maximum number of points to display
-const timeWindowMs = 5 * 60 * 1000; // 5 minute time window
+const maxPoints = 100; // Keep as a constant now, no longer configurable via UI
+let timeWindowMs = 5 * 60 * 1000; // 5 minute time window
 let timeLabels = [];
 let incomingBytes = [];
 let outgoingBytes = [];
-
+let updateInterval = 2000; // Default update interval in ms
 
 // AREA CHART SETUP
 const trafficCtx = document.getElementById('trafficChart').getContext('2d');
@@ -44,15 +44,15 @@ const trafficChart = new Chart(trafficCtx, {
         title: { 
           display: true, 
           text: 'Time',
-          color: document.body.classList.contains('dark-theme') ? '#f0f0f0' : '#666'
+          color: '#666'
         },
         ticks: {
           maxTicksLimit: 8,
           autoSkip: true,
-          color: document.body.classList.contains('dark-theme') ? '#f0f0f0' : '#666'
+          color: '#666'
         },
         grid: {
-          color: document.body.classList.contains('dark-theme') ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'
+          color: 'rgba(0, 0, 0, 0.1)'
         }
       },
       y: {
@@ -60,20 +60,20 @@ const trafficChart = new Chart(trafficCtx, {
         title: { 
           display: true, 
           text: 'Bytes/s',
-          color: document.body.classList.contains('dark-theme') ? '#f0f0f0' : '#666'
+          color: '#666'
         },
         ticks: {
-          color: document.body.classList.contains('dark-theme') ? '#f0f0f0' : '#666'
+          color: '#666'
         },
         grid: {
-          color: document.body.classList.contains('dark-theme') ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'
+          color: 'rgba(0, 0, 0, 0.1)'
         }
       }
     },
     plugins: {
       legend: {
         labels: {
-          color: document.body.classList.contains('dark-theme') ? '#f0f0f0' : '#666'
+          color: '#666'
         }
       }
     }
@@ -89,7 +89,7 @@ const createSpeedometer = (ctxId, label) => {
       labels: ['Used', 'Remaining'],
       datasets: [{
         data: [0, 100],
-        backgroundColor: ['#007bff', document.body.classList.contains('dark-theme') ? '#444' : '#e9ecef'],
+        backgroundColor: ['#007bff', '#e9ecef'],
         borderWidth: 0
       }]
     },
@@ -105,7 +105,7 @@ const createSpeedometer = (ctxId, label) => {
           text: `${label}: 0 kbps`,
           padding: { top: 10, bottom: 0 },
           font: { size: 14 },
-          color: document.body.classList.contains('dark-theme') ? '#f0f0f0' : '#333'
+          color: '#333'
         }
       }
     }
@@ -187,7 +187,7 @@ function renderTopBandwidthChart(data) {
         legend: { 
           display: false,
           labels: {
-            color: document.body.classList.contains('dark-theme') ? '#f0f0f0' : '#666'
+            color: '#666'
           }
         },
         tooltip: {
@@ -203,26 +203,26 @@ function renderTopBandwidthChart(data) {
           title: {
             display: true,
             text: 'Bandwidth Usage (Bytes)',
-            color: document.body.classList.contains('dark-theme') ? '#f0f0f0' : '#666'
+            color: '#666'
           },
           ticks: {
-            color: document.body.classList.contains('dark-theme') ? '#f0f0f0' : '#666'
+            color: '#666'
           },
           grid: {
-            color: document.body.classList.contains('dark-theme') ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'
+            color: 'rgba(0, 0, 0, 0.1)'
           }
         },
         y: {
           title: {
             display: true,
             text: 'App / Hostname / IP',
-            color: document.body.classList.contains('dark-theme') ? '#f0f0f0' : '#666'
+            color: '#666'
           },
           ticks: {
-            color: document.body.classList.contains('dark-theme') ? '#f0f0f0' : '#666'
+            color: '#666'
           },
           grid: {
-            color: document.body.classList.contains('dark-theme') ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'
+            color: 'rgba(0, 0, 0, 0.1)'
           }
         }
       }
@@ -275,7 +275,7 @@ function renderProtocolChart(data) {
         legend: {
           position: "bottom",
           labels: {
-            color: document.body.classList.contains('dark-theme') ? '#f0f0f0' : '#666',
+            color: '#666',
             font: {
               size: 12
             }
@@ -291,7 +291,7 @@ function renderProtocolChart(data) {
         title: {
           display: true,
           text: "Traffic Distribution by Protocol",
-          color: document.body.classList.contains('dark-theme') ? '#f0f0f0' : '#333'
+          color: '#333'
         }
       }
     }
@@ -493,7 +493,9 @@ document.querySelectorAll('.tab-btn').forEach(button => {
     document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
     
     // Add active class to clicked button
-    button.classList.add('active');
+    button.addEventListener('click', () => {
+      button.classList.add('active');
+    });
     
     // Hide all tab contents
     document.querySelectorAll('.tab-content').forEach(content => content.classList.add('hidden'));
@@ -505,23 +507,21 @@ document.querySelectorAll('.tab-btn').forEach(button => {
 });
 
 // Settings handling
-document.getElementById('data-points').addEventListener('input', e => {
-  document.getElementById('data-points-value').textContent = e.target.value;
-});
-
 document.getElementById('apply-settings').addEventListener('click', () => {
-  const updateInterval = parseInt(document.getElementById('update-interval').value);
-  const dataPointsValue = parseInt(document.getElementById('data-points').value);
-  const theme = document.getElementById('theme-selector').value;
+  const newUpdateInterval = parseInt(document.getElementById('update-interval').value);
   
-  // Apply the settings
-  maxPoints = dataPointsValue;
-  
-  // Update theme
-  if (theme === 'dark') {
-    document.body.classList.add('dark-theme');
-  } else {
-    document.body.classList.remove('dark-theme');
+  // Only update if the value has changed
+  if (newUpdateInterval !== updateInterval) {
+    updateInterval = newUpdateInterval;
+    
+    // Clear any existing update timers
+    if (window.updateTimer) {
+      clearInterval(window.updateTimer);
+    }
+    
+    // Start new update timer with the selected interval
+    window.updateTimer = setInterval(updateCharts, updateInterval);
+    console.log(`Chart update interval changed to ${updateInterval}ms`);
   }
   
   alert('Settings applied successfully!');
@@ -539,8 +539,8 @@ let lastData = null;
 const incomingGauge = createSpeedometer('incomingSpeedo', 'Download Speed');
 const outgoingGauge = createSpeedometer('outgoingSpeedo', 'Upload Speed');
 
-// UPDATE DATA PERIODICALLY
-setInterval(async () => {
+// Define the update function that will be called by the timer
+async function updateCharts() {
   try {
     const data = await fetchData();
     if (!data) {
@@ -606,7 +606,10 @@ setInterval(async () => {
   } catch (err) {
     console.error("Error updating UI:", err);
   }
-}, 2000);
+}
+
+// Initialize the update timer with the default interval
+window.updateTimer = setInterval(updateCharts, updateInterval);
 
 // Add logging to debug data flow
 function debugDataFlow(data) {

@@ -298,44 +298,6 @@ header h1 {
   background-color: #2980b9;
 }
 
-/* Dark mode support */
-.dark-theme {
-  background-color: #1a1a1a;
-  color: #f0f0f0;
-}
-
-.dark-theme .chart-container,
-.dark-theme .speedometer,
-.dark-theme .chart-section,
-.dark-theme .settings-container,
-.dark-theme .stat-card,
-.dark-theme .table-container {
-  background-color: #2c2c2c;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-}
-
-.dark-theme .stat-title {
-  color: #aaa;
-}
-
-.dark-theme .stat-value,
-.dark-theme h3 {
-  color: #f0f0f0;
-}
-
-.dark-theme #traffic-table th {
-  background-color: #333;
-  color: #ddd;
-}
-
-.dark-theme #traffic-table td {
-  border-bottom: 1px solid #444;
-}
-
-.dark-theme #traffic-table tbody tr:hover {
-  background-color: #3a3a3a;
-}
-
 /* Responsive adjustments */
 @media (max-width: 1000px) {
   .speedometers,
