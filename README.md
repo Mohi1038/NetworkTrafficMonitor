@@ -43,7 +43,7 @@ A real-time network traffic monitoring application with intrusion detection capa
 
 ### 1. Clone the repository
 ```bash
-git clone https://github.com/Abhinashroy/NetworkTrafficMonitor.git
+git clone https://github.com/tacticalYP/NetworkTrafficMonitor.git
 cd NetworkTrafficMonitor
 ```
 
