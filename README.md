@@ -1,45 +1,59 @@
-# Network Traffic Monitor
+# Network Traffic Monitor 
 
-A real-time network traffic monitoring application with intrusion detection capabilities. This tool provides visualization of network traffic, protocol distribution analysis, and machine learning-based threat detection.
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![Python 3.8+](https://img.shields.io/badge/Python-3.8%2B-blue.svg)](https://www.python.org/downloads/)
+[![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux-lightgrey.svg)]()
 
-![Network Traffic Monitor Screenshot](./docs/image_demo.png)
+![Network Traffic Monitor Dashboard](./docs/image_demo.png)
 
-## Features
+> Enterprise-grade network monitoring solution with real-time analytics and machine learning-powered threat detection
 
-- Real-time network traffic visualization
-- Protocol distribution analysis
-- Top bandwidth usage by application/IP
-- Traffic details table with filtering
-- Speed monitoring (download/upload)
-- Intrusion detection using machine learning
-- Alert notifications for suspicious traffic
+## 🔍 Overview
 
-## Requirements
+The Network Traffic Monitor is a comprehensive solution for real-time network analysis, providing:
+- Live traffic visualization and protocol breakdowns
+- Bandwidth consumption monitoring by application/IP
+- Machine learning-based intrusion detection system
+- Alerting for suspicious network activities
 
-### System Requirements
-- Windows 10/11 (64-bit) or Linux
-- 4GB RAM minimum (8GB recommended)
-- 500MB free disk space
+## ✨ Key Features
 
-### Software Requirements
-- Python 3.8+ installed
-- Node.js 14+ and npm
-- Npcap installed (for Windows)
-- Administrator privileges
+| Feature | Description |
+|---------|-------------|
+|  Real-time Visualization | Interactive dashboards showing live network traffic |
+|  Protocol Analytics | Detailed breakdown by protocol (TCP/UDP/ICMP etc.) |
+|  Traffic Filtering | Advanced filtering of captured packets |
+|  Performance Metrics | Download/upload speed monitoring |
+|  Threat Detection | ML-powered anomaly detection |
+|  Alert System | Notifications for suspicious activities |
 
-### Python Packages
-- Flask
-- Scapy
-- NumPy
-- pandas
-- joblib
-- psutil
+## 🛠️ Technical Stack
 
-### JavaScript Packages
-- Electron
-- Chart.js
+### Backend
+- **Core**: Python 3.8+
+- **Frameworks**: Flask (API server)
+- **Networking**: Scapy, Npcap (Windows)
+- **ML**: scikit-learn, joblib (model persistence)
+- **Utilities**: psutil, pandas, NumPy
 
-## Installation
+### Frontend
+- **Framework**: Electron.js
+- **Visualization**: Chart.js
+- **UI**: HTML5, CSS3
+
+## 🚀 Installation Guide
+
+### Prerequisites
+
+```bash
+# System Requirements
+- OS: Windows 10/11 (64-bit) or Linux
+- RAM: 4GB minimum (8GB recommended)
+- Storage: 500MB available space
+- Admin/root privileges required
+```
+
+## Step-By-Step Setup
 
 ### 1. Clone the repository
 ```bash
@@ -114,6 +128,20 @@ NetworkTrafficMonitor/
 │   └── package.json        # Node.js dependencies
 └── README.md
 ```
+
+## Machine Learning Integration
+Our threat detection system utilizes:
+
+- Supervised learning models for known attack patterns
+- Anomaly detection algorithms for zero-day threats
+- Continuous learning from network behavior
+- Model artifacts are stored in backend/ml_model/ with:
+
+- Pre-trained classifiers
+- Feature extraction pipelines
+- Model evaluation metrics
+
+
 
 ## Troubleshooting
 
