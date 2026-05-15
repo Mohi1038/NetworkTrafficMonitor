@@ -46,6 +46,33 @@ The Network Traffic Monitor is a comprehensive solution for real-time network an
 
 ## 🚀 Installation Guide
 
+## 📦 Self-Contained Installers (For End Users)
+
+End users should **not** need to install Python packages manually.
+
+- Use the installer built for your OS/architecture:
+  - macOS: `.dmg`
+  - Windows: `Setup .exe` or portable `.exe`
+  - Linux: `.AppImage` or `.deb`
+- The app package includes the backend folder and a backend virtual environment built on that same OS.
+- When users click **Allow**, the app starts the bundled backend and grants consent. It does **not** run `pip install`.
+
+### Build Correctly For Global Distribution
+
+Do not rely on one machine to build all OS installers with a shared backend runtime.
+
+- Build mac installers on macOS.
+- Build Windows installers on Windows.
+- Build Linux installers on Linux.
+
+This repository includes:
+
+- Local scripts in [frontend/package.json](frontend/package.json):
+  - `npm run build-mac-self-contained`
+  - `npm run build-win-self-contained`
+  - `npm run build-linux-self-contained`
+- GitHub Actions matrix workflow in [.github/workflows/build-installers.yml](.github/workflows/build-installers.yml) that builds each OS installer on its matching runner.
+
 ### Prerequisites
 
 #### Windows
