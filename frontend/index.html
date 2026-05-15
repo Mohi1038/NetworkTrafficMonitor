@@ -14,11 +14,17 @@
     <div class="header-content">
       <div class="tabs">
         <button class="tab-btn active" data-tab="dashboard">Dashboard</button>
+        <button class="tab-btn" data-tab="security">Security</button>
         <button class="tab-btn" data-tab="traffic-details">Traffic Details</button>
         <button class="tab-btn" data-tab="settings">Settings</button>
       </div>
-      <div id="connection-status" class="connection-status online" title="Connected to backend">
-        <i class="fas fa-circle"></i>
+      <div class="header-controls">
+        <button id="theme-toggle" class="theme-toggle" title="Toggle dark/light mode">
+          <i class="fas fa-moon"></i>
+        </button>
+        <div id="connection-status" class="connection-status online" title="Connected to backend">
+          <i class="fas fa-circle"></i>
+        </div>
       </div>
     </div>
   </header>
@@ -51,12 +57,34 @@
 
       <div class="speedometers">
         <div class="speedometer">
-          <h3>Download Speed (kbps)</h3>
+          <h3>Download Speed (Mbps)</h3>
           <canvas id="incomingSpeedo"></canvas>
         </div>
         <div class="speedometer">
-          <h3>Upload Speed (kbps)</h3>
+          <h3>Upload Speed (Mbps)</h3>
           <canvas id="outgoingSpeedo"></canvas>
+        </div>
+      </div>
+
+      <div class="speedtest-section">
+        <button id="speedtest-btn" class="speedtest-button">
+          <i class="fas fa-bolt"></i> Run Speed Test
+        </button>
+        <div id="speedtest-results" class="speedtest-results" style="display: none;">
+          <div class="speedtest-status">
+            <span id="speedtest-status-text">Testing...</span>
+            <div id="speedtest-progress" class="progress-bar"></div>
+          </div>
+          <div class="speedtest-data">
+            <div class="speedtest-item">
+              <div class="speedtest-label">Peak Download</div>
+              <div class="speedtest-value" id="speedtest-download">-</div>
+            </div>
+            <div class="speedtest-item">
+              <div class="speedtest-label">Peak Upload</div>
+              <div class="speedtest-value" id="speedtest-upload">-</div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -77,6 +105,165 @@
           </div>      
           <canvas id="topBandwidthChart"></canvas>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tab-content hidden" id="security">
+    <div class="security-dashboard">
+      <h2><i class="fas fa-shield-alt"></i> Security Overview</h2>
+      
+      <div class="security-grid">
+        <!-- Threat Detection Card -->
+        <div class="security-card threat-card">
+          <div class="security-card-header">
+            <h3><i class="fas fa-exclamation-triangle"></i> Threat Detection</h3>
+              <div style="display:flex; gap:10px; align-items:center;">
+                <span class="security-status safe"><i class="fas fa-check-circle"></i> Safe</span>
+                <button class="btn btn-secondary view-details" data-type="threat">View Details</button>
+              </div>
+          </div>
+          <div class="security-card-content">
+            <div class="security-stat">
+              <div class="stat-label">Suspicious IPs Detected</div>
+              <div class="stat-value" id="suspicious-ips">0</div>
+            </div>
+            <div class="security-stat">
+              <div class="stat-label">Anomalies Found</div>
+              <div class="stat-value" id="anomalies">0</div>
+            </div>
+            <div class="security-stat">
+              <div class="stat-label">Threat Level</div>
+              <div class="stat-bar">
+                <div class="bar-fill" id="threat-bar" style="width: 15%"></div>
+              </div>
+              <span class="bar-label" id="threat-level">Low</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Geo-Blocking Card -->
+        <div class="security-card geo-card">
+          <div class="security-card-header">
+            <h3><i class="fas fa-globe"></i> Geo-Blocking</h3>
+              <div style="display:flex; gap:10px; align-items:center;">
+                <span class="security-status active"><i class="fas fa-check-circle"></i> Active</span>
+                <button class="btn btn-secondary view-details" data-type="geo">View Details</button>
+              </div>
+          </div>
+          <div class="security-card-content">
+            <div class="security-stat">
+              <div class="stat-label">Blocked Countries</div>
+              <div class="stat-value" id="blocked-countries">3</div>
+            </div>
+            <div class="security-stat">
+              <div class="stat-label">Blocked Connections</div>
+              <div class="stat-value" id="blocked-connections">5</div>
+            </div>
+            <div class="security-stat">
+              <div class="stat-label">Allowed Regions</div>
+              <div class="regions-list" id="allowed-regions">
+                <span class="region-tag">🇺🇸 USA</span>
+                <span class="region-tag">🇨🇦 Canada</span>
+                <span class="region-tag">🇬🇧 UK</span>
+                <span class="region-tag">🇮🇪 Ireland</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- DDoS Protection Card -->
+        <div class="security-card ddos-card">
+          <div class="security-card-header">
+            <h3><i class="fas fa-shield-virus"></i> DDoS Protection</h3>
+              <div style="display:flex; gap:10px; align-items:center;">
+                <span class="security-status active"><i class="fas fa-check-circle"></i> Active</span>
+                <button class="btn btn-secondary view-details" data-type="ddos">View Details</button>
+              </div>
+          </div>
+          <div class="security-card-content">
+            <div class="security-stat">
+              <div class="stat-label">Attack Attempts Blocked</div>
+              <div class="stat-value" id="ddos-blocked">12</div>
+            </div>
+            <div class="security-stat">
+              <div class="stat-label">Suspicious Flows</div>
+              <div class="stat-value" id="suspicious-flows">3</div>
+            </div>
+            <div class="security-stat">
+              <div class="stat-label">Protection Status</div>
+              <div class="status-indicator active"></div>
+              <span class="bar-label">Protected</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Protocol Security Card -->
+        <div class="security-card protocol-card">
+          <div class="security-card-header">
+            <h3><i class="fas fa-diagram-project"></i> Protocol Analysis</h3>
+              <div style="display:flex; gap:10px; align-items:center;">
+                <span class="security-status monitored"><i class="fas fa-eye"></i> Monitored</span>
+                <button class="btn btn-secondary view-details" data-type="protocol">View Details</button>
+              </div>
+          </div>
+          <div class="security-card-content">
+            <div class="security-stat">
+              <div class="stat-label">Suspicious Ports</div>
+              <div class="stat-value" id="suspicious-ports">2</div>
+            </div>
+            <div class="security-stat">
+              <div class="stat-label">Encrypted Traffic</div>
+              <div class="stat-percentage" id="encrypted-traffic">87%</div>
+            </div>
+            <div class="security-stat">
+              <div class="stat-label">Unencrypted Traffic</div>
+              <div class="stat-percentage" id="unencrypted-traffic">13%</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="security-alerts">
+        <h3><i class="fas fa-bell"></i> Recent Security Events</h3>
+        <div class="alerts-list" id="security-alerts">
+          <div class="alert-item info">
+            <span class="alert-icon"><i class="fas fa-info-circle"></i></span>
+            <div class="alert-content">
+              <span class="alert-title">Connection from new IP detected</span>
+              <span class="alert-time">2 minutes ago</span>
+            </div>
+          </div>
+          <div class="alert-item warning">
+            <span class="alert-icon"><i class="fas fa-exclamation-circle"></i></span>
+            <div class="alert-content">
+              <span class="alert-title">High volume from 192.168.1.50</span>
+              <span class="alert-time">5 minutes ago</span>
+            </div>
+          </div>
+          <div class="alert-item success">
+            <span class="alert-icon"><i class="fas fa-check-circle"></i></span>
+            <div class="alert-content">
+              <span class="alert-title">DDoS pattern blocked</span>
+              <span class="alert-time">10 minutes ago</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Security detail modal -->
+  <div id="security-modal" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-panel">
+      <div class="modal-header">
+        <h3 id="modal-title">Details</h3>
+        <button id="modal-close" class="btn btn-secondary">Close</button>
+      </div>
+      <div id="modal-body" class="modal-body"></div>
+      <div class="modal-actions" style="margin-top:16px; text-align:right;">
+        <button id="modal-action" class="btn btn-primary">Take Action</button>
       </div>
     </div>
   </div>
@@ -119,21 +306,99 @@
 
   <div class="tab-content hidden" id="settings">
     <div class="settings-container">
-      <h3><i class="fas fa-sliders-h"></i> Display Settings</h3>
-      <div class="setting-group">
-        <label>Chart Update Interval:</label>
-        <select id="update-interval">
-          <option value="1000">1 second</option>
-          <option value="2000" selected>2 seconds</option>
-          <option value="5000">5 seconds</option>
-        </select>
+      <div class="settings-group-container">
+        <!-- Display Settings -->
+        <div class="settings-section">
+          <h3><i class="fas fa-sliders-h"></i> Display Settings</h3>
+          <div class="setting-group">
+            <label>Chart Update Interval:</label>
+            <select id="update-interval">
+              <option value="1000">1 second</option>
+              <option value="2000" selected>2 seconds</option>
+              <option value="5000">5 seconds</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Theme Settings -->
+        <div class="settings-section">
+          <h3><i class="fas fa-palette"></i> Theme Settings</h3>
+          <div class="setting-group">
+            <label>Color Theme:</label>
+            <div class="theme-options">
+              <label class="radio-label">
+                <input type="radio" name="theme" value="light" id="theme-light">
+                <span><i class="fas fa-sun"></i> Light Mode</span>
+              </label>
+              <label class="radio-label">
+                <input type="radio" name="theme" value="dark" id="theme-dark">
+                <span><i class="fas fa-moon"></i> Dark Mode</span>
+              </label>
+              <label class="radio-label">
+                <input type="radio" name="theme" value="auto" id="theme-auto" checked>
+                <span><i class="fas fa-circle-half-stroke"></i> Auto (System)</span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Security Settings -->
+        <div class="settings-section">
+          <h3><i class="fas fa-lock"></i> Security Settings</h3>
+          <div class="setting-group">
+            <label class="checkbox-label">
+              <input type="checkbox" id="geo-blocking-enabled" checked>
+              <span>Enable Geo-Blocking</span>
+            </label>
+          </div>
+          <div class="setting-group">
+            <label class="checkbox-label">
+              <input type="checkbox" id="ddos-protection-enabled" checked>
+              <span>Enable DDoS Protection</span>
+            </label>
+          </div>
+          <div class="setting-group">
+            <label class="checkbox-label">
+              <input type="checkbox" id="threat-detection-enabled" checked>
+              <span>Enable Threat Detection</span>
+            </label>
+          </div>
+          <div class="setting-group">
+            <label>Blocked Countries (comma-separated):</label>
+            <input type="text" id="blocked-countries-input" placeholder="CN,RU,KP" value="CN,RU,KP">
+          </div>
+          <div class="setting-group">
+            <label>Notification Email (alerts):</label>
+            <input type="email" id="notification-email" placeholder="security@example.com">
+            <div style="margin-top:8px; display:flex; gap:8px;">
+              <button id="save-email-btn" class="btn btn-primary">Save Email</button>
+              <button id="test-email-btn" class="btn btn-secondary">Send Test Email</button>
+            </div>
+            <div style="font-size:12px; color:#999; margin-top:8px; line-height:1.5;">
+              <strong>Note:</strong> SMTP credentials are configured via environment variables for security:
+              <code style="display:block; margin-top:4px; padding:4px; background:#f5f5f5; border-radius:3px; font-family:monospace; font-size:11px;">
+                ALERT_EMAIL_SENDER<br/>
+                ALERT_EMAIL_RECEIVER<br/>
+                ALERT_EMAIL_PASSWORD<br/>
+                ALERT_SMTP_HOST<br/>
+                ALERT_SMTP_PORT<br/>
+                ALERT_SMTP_USER<br/>
+                ALERT_SMTP_SSL
+              </code>
+            </div>
+          </div>
+        </div>
       </div>
-      <button id="apply-settings" class="btn">Apply Settings</button>
+
+      <div class="settings-actions">
+        <button id="apply-settings" class="btn btn-primary">Apply Settings</button>
+        <button id="reset-settings" class="btn btn-secondary">Reset to Defaults</button>
+      </div>
       
-      <div class="debug-section" style="margin-top: 30px; border-top: 1px solid #ddd; padding-top: 20px;">
-        <h3>Debugging Tools</h3>
-        <button id="debug-charts" class="btn" style="background-color: #e74c3c; margin-right: 10px;">Debug Charts</button>
-        <button id="reload-charts" class="btn" style="background-color: #2ecc71;">Reload Charts</button>
+      <div class="debug-section">
+        <h3><i class="fas fa-bug"></i> Debugging Tools</h3>
+        <button id="debug-charts" class="btn btn-danger">Debug Charts</button>
+        <button id="reload-charts" class="btn btn-success">Reload Charts</button>
       </div>
     </div>
   </div>
