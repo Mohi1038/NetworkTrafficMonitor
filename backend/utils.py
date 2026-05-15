@@ -4,7 +4,12 @@ from collections import defaultdict
 stats = {
     "total_incoming_bytes": 0,
     "total_outgoing_bytes": 0,
-    "speed": {"incoming_kbps": 0, "outgoing_kbps": 0},
+    "speed": {
+        "incoming_mbps": 0,
+        "outgoing_mbps": 0,
+        "incoming_kbps": 0,
+        "outgoing_kbps": 0
+    },
     "protocol_distribution": defaultdict(int),
     # "top_ips": defaultdict(int),
     # "top_ips": defaultdict(lambda: {"hostname": "", "app": "", "total_bytes": 0}),

@@ -10,18 +10,24 @@ import psutil
 import threading
 
 lock = threading.RLock()
-DATA_FILE = "network_data.json"
-TEMP_FILE = "network_data_tmp.json"
+BASE_DIR = Path(__file__).parent
+DATA_FILE = BASE_DIR / "network_data.json"
+TEMP_FILE = BASE_DIR / "network_data_tmp.json"
 
 stats = {
     "total_incoming_bytes": 0,
     "total_outgoing_bytes": 0,
-    "speed": {"incoming_kbps": 0, "outgoing_kbps": 0},
+    "speed": {
+        "incoming_mbps": 0,
+        "outgoing_mbps": 0,
+        "incoming_kbps": 0,  # Backward compatibility
+        "outgoing_kbps": 0   # Backward compatibility
+    },
     "protocol_distribution": defaultdict(int),
     # "top_ips": defaultdict(int),
     # "top_ips": defaultdict(lambda: {"hostname": "", "app": "", "total_bytes": 0}),
     "top_ips": defaultdict(lambda: {"hostname": "", "app": "", "incoming_bytes": 0, "outgoing_bytes": 0}),
-    
+
     "traffic_table": []
 }
 
@@ -71,7 +77,7 @@ def save_to_json():
             "speed": stats["speed"],
             "protocol_distribution": dict(stats["protocol_distribution"]),
             "top_ips": dict(stats["top_ips"]),
-            
+
             "traffic_table": stats["traffic_table"][-100:]  # Keep recent 100
         }, DATA_FILE)
 
@@ -93,14 +99,20 @@ port_process_cache = {}
 def get_process_name_by_port(port):
     if port in port_process_cache:
         return port_process_cache[port]
-    for conn in psutil.net_connections(kind='inet'):
-        if conn.laddr and conn.laddr.port == port:
+    try:
+        connections = psutil.net_connections(kind='inet')
+    except (psutil.AccessDenied, PermissionError):
+        port_process_cache[port] = None
+        return None
+
+    for conn in connections:
+        if conn.laddr and conn.laddr.port == port and conn.pid:
             try:
                 proc = psutil.Process(conn.pid)
                 name = proc.name()
                 port_process_cache[port] = name
                 return name
-            except Exception:
+            except (psutil.AccessDenied, psutil.NoSuchProcess, PermissionError):
                 continue
     port_process_cache[port] = None
     return None
@@ -144,6 +156,7 @@ def update_stats(src_ip, src_port, dst_ip, dst_port, protocol, size, direction):
             "dst_ip": dst_ip,
             "dst_port": dst_port,
             "protocol": protocol,
+            "direction": direction,
             "bytes": size
         })
 
@@ -153,20 +166,53 @@ def json_writer_loop():
         time.sleep(1)
         save_to_json()
 
+# Speed calculation history for smooth averaging (like Akamai/Ookla)
+speed_samples = {'incoming': [], 'outgoing': []}
+MAX_SPEED_SAMPLES = 10  # Keep 10 samples for averaging
+
 def update_speed_loop():
     with lock:
         prev_in = stats["total_incoming_bytes"]
         prev_out = stats["total_outgoing_bytes"]
-        
+
     while True:
         time.sleep(1)
         with lock:
             curr_in = stats["total_incoming_bytes"]
             curr_out = stats["total_outgoing_bytes"]
-            stats["speed"]["incoming_kbps"] = round((curr_in - prev_in) * 8 / 1000, 2)
-            stats["speed"]["outgoing_kbps"] = round((curr_out - prev_out) * 8 / 1000, 2)
-            prev_in, prev_out = curr_in, curr_out
             
+            # Calculate instantaneous speed in Mbps (megabits per second)
+            # Formula: (bytes * 8 bits/byte) / (1 second) / (1,000,000 bits/Mb)
+            bytes_in_delta = curr_in - prev_in
+            bytes_out_delta = curr_out - prev_out
+            
+            incoming_mbps = round((bytes_in_delta * 8) / 1_000_000, 2)
+            outgoing_mbps = round((bytes_out_delta * 8) / 1_000_000, 2)
+            
+            # Store samples for averaging (smooth out spikes)
+            speed_samples['incoming'].append(incoming_mbps)
+            speed_samples['outgoing'].append(outgoing_mbps)
+            
+            # Keep only the last MAX_SPEED_SAMPLES
+            if len(speed_samples['incoming']) > MAX_SPEED_SAMPLES:
+                speed_samples['incoming'].pop(0)
+            if len(speed_samples['outgoing']) > MAX_SPEED_SAMPLES:
+                speed_samples['outgoing'].pop(0)
+            
+            # Calculate moving average (more stable than instantaneous)
+            avg_incoming = round(sum(speed_samples['incoming']) / len(speed_samples['incoming']), 2)
+            avg_outgoing = round(sum(speed_samples['outgoing']) / len(speed_samples['outgoing']), 2)
+            
+            # Update stats with averaged values (Mbps)
+            stats["speed"]["incoming_mbps"] = avg_incoming
+            stats["speed"]["outgoing_mbps"] = avg_outgoing
+            
+            # Also keep backward compatibility with kbps
+            stats["speed"]["incoming_kbps"] = round(avg_incoming * 1000, 2)
+            stats["speed"]["outgoing_kbps"] = round(avg_outgoing * 1000, 2)
+            
+            prev_in, prev_out = curr_in, curr_out
+
 load_existing_data()
 
 # Start both background threads safely
