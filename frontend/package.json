@@ -1,6 +1,8 @@
 {
     "name": "network-traffic-monitor",
     "version": "1.0.0",
+    "description": "Network Traffic Monitor - desktop app for real-time traffic visualization and alerts",
+    "author": "Mohi1038 <mohimeemrauth2023@gmail.com>",
     "main": "main.js",
     "homepage": "./",
     "scripts": {
@@ -57,7 +59,7 @@
     },
     "devDependencies": {
         "electron": "^27.0.0",
-        "electron-builder": "^24.6.4"
+        "electron-builder": "^24.13.3"
     },
     "dependencies": {
         "chart.js": "^4.4.8",
