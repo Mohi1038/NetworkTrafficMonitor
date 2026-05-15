@@ -9,6 +9,6 @@ scikit-learn
 python-dotenv
 requests
 gunicorn
-geolite2
 geoip2
 maxminddb
+
