@@ -37,6 +37,14 @@ contextBridge.exposeInMainWorld('api', {
     return { status: 'error', message: 'No backend reachable' };
   },
 
+  startBackend: async () => {
+    return ipcRenderer.invoke('backend:start');
+  },
+
+  stopBackend: async () => {
+    return ipcRenderer.invoke('backend:stop');
+  },
+
   getConsentStatus: async () => {
     const bases = ['http://127.0.0.1:5000', 'http://127.0.0.1:5001'];
     for (const b of bases) {

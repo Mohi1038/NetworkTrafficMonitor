@@ -8,11 +8,15 @@
     "scripts": {
         "start": "electron .",
         "dev": "electron . --debug",
+        "prepare-backend-runtime": "node scripts/prepare-backend-runtime.js",
         "build": "electron-builder",
         "build-win": "electron-builder --win --publish never",
         "build-mac": "electron-builder --mac --publish never",
         "build-linux": "electron-builder --linux --publish never",
-        "build-all": "electron-builder -mwl --publish never"
+        "build-all": "electron-builder -mwl --publish never",
+        "build-win-self-contained": "npm run prepare-backend-runtime && electron-builder --win --publish never",
+        "build-mac-self-contained": "npm run prepare-backend-runtime && electron-builder --mac --publish never",
+        "build-linux-self-contained": "npm run prepare-backend-runtime && electron-builder --linux --publish never"
     },
     "build": {
         "appId": "com.networktrafficmonitor.app",
@@ -20,6 +24,12 @@
         "directories": {
             "buildResources": "assets"
         },
+        "extraResources": [
+            {
+                "from": "../backend",
+                "to": "backend"
+            }
+        ],
         "files": [
             "main.js",
             "preload.js",

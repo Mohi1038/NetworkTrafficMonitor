@@ -68,6 +68,11 @@ async function loadConsentStatus() {
 
 async function requestConsent() {
   try {
+    if (window.api?.startBackend) {
+      showConsentModal('Starting the local backend on your machine...');
+      await window.api.startBackend();
+    }
+
     const response = window.api?.acceptConsent
       ? await window.api.acceptConsent()
       : await apiFetch('/api/consent/accept', {
