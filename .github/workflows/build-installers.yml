@@ -1,0 +1,136 @@
+name: Build Self-Contained Installers
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    name: Build on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            npm_script: build-mac-self-contained
+            artifact_name: macos-installers
+            artifact_pattern: |
+              frontend/dist/*.dmg
+              frontend/dist/*-mac.zip
+          - os: windows-latest
+            npm_script: build-win-self-contained
+            artifact_name: windows-installers
+            artifact_pattern: |
+              frontend/dist/*Setup*.exe
+              frontend/dist/*portable*.exe
+              frontend/dist/*.exe
+          - os: ubuntu-latest
+            npm_script: build-linux-self-contained
+            artifact_name: linux-installers
+            artifact_pattern: |
+              frontend/dist/*.AppImage
+              frontend/dist/*.deb
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build self-contained installer
+        working-directory: frontend
+        run: npm run ${{ matrix.npm_script }}
+
+      - name: Upload installer artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: ${{ matrix.artifact_pattern }}
+          if-no-files-found: error
+
+  create_release:
+    name: Create GitHub Release and upload installers
+    runs-on: ubuntu-latest
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download mac artifacts
+        if: always()
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-installers
+          path: artifacts/macos || artifacts/macos
+
+      - name: Download windows artifacts
+        if: always()
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-installers
+          path: artifacts/windows || artifacts/windows
+
+      - name: Download linux artifacts
+        if: always()
+        uses: actions/download-artifact@v4
+        with:
+          name: linux-installers
+          path: artifacts/linux || artifacts/linux
+
+      - name: Generate release notes
+        id: notes
+        run: |
+          body="## Network Traffic Monitor - ${GITHUB_REF#refs/tags/}\n\n"
+          body+="This release contains self-contained installers for macOS (arm64), Windows (arm64) and Linux. Each installer includes the backend Python virtual environment and all required Python packages so end users do not need to install Python dependencies manually.\n\n"
+          body+="**Included installers:**\n- macOS: .dmg and .zip (apple silicon)\n- Windows: installer (.exe) and portable (.exe)\n- Linux: AppImage and .deb\n\n"
+          body+="**How to use:**\n1. Download the installer matching your OS and architecture.\n2. Install and run the app.\n3. Click **Allow** in the consent modal to start the bundled backend and begin local capture.\n\n"
+          body+="**Notes:**\n- The installers are architecture-specific — build separate installers for Intel x64 and Apple Silicon.\n- Packet capture still requires platform-specific privileges (Npcap on Windows, elevated permissions or allowed capture on macOS/Linux).\n\n"
+          body+="**Release artifacts:**\n"
+          echo "body<<EOF" >> $GITHUB_OUTPUT
+          echo "$body" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub release
+        id: create_release
+        uses: actions/create-release@v1
+        with:
+          tag_name: ${{ github.ref_name }}
+          release_name: "Network Traffic Monitor ${{ github.ref_name }}"
+          body: ${{ steps.notes.outputs.body }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload all installer assets
+        run: |
+          set -e
+          for dir in artifacts/macos artifacts/windows artifacts/linux; do
+            if [ -d "$dir" ]; then
+              for f in "$dir"/*; do
+                if [ -f "$f" ]; then
+                  echo "Uploading $f"
+                  gh release upload "${GITHUB_REF#refs/tags/}" "$f" --clobber || true
+                fi
+              done
+            fi
+          done
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
