@@ -109,8 +109,6 @@ def temp():
             stats["traffic_table"] = data.get("traffic_table", [])
 
 set_alert_callback(alert_callback)
-
-threading.Thread(target=start_sniffing, daemon=True).start()
 if capture_consent_granted():
     start_capture_thread()
 else:
