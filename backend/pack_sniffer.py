@@ -1,21 +1,42 @@
 import time
-import joblib
-import numpy as np
-import pandas as pd
+import os
+import sys
 import threading
 from collections import defaultdict
+from pathlib import Path
+
+import warnings
+warnings.filterwarnings("ignore")
+
+# Check for root/admin privileges
+def check_privileges():
+    """Warn if not running with appropriate privileges"""
+    if os.name == 'posix':  # Linux/macOS
+        if os.geteuid() != 0:
+            print("[⚠️  WARNING] Not running as root. Packet capture may fail.")
+            print("[INFO] Try running with: sudo python3 app2.py")
+            return False
+    return True
+
+check_privileges()
+
 from scapy.all import sniff, IP, IPv6, TCP, UDP, ARP, Ether
 from traffic_analyzer import update_stats
 from utils import get_active_ip
-import warnings
+import numpy as np
+import pandas as pd
 
-warnings.filterwarnings("ignore")
-
-# Load model, scaler, PCA (FIXED PATHS)
-model = joblib.load("./backend/ml_model/ml _model/rf_model.pkl")
-scaler = joblib.load("./backend/ml_model/ml _model/scaler.pkl")
-pca = joblib.load("./backend/ml_model/ml _model/pca.pkl")
-print("[+] Model, scaler, PCA loaded.")
+# Try to import ML inference module
+try:
+    from ml_models.ml_inference import get_ml_engine
+    ml_engine = get_ml_engine()
+    ML_ENABLED = ml_engine.is_loaded
+    print("[+] ML inference module loaded successfully.")
+except Exception as e:
+    print(f"[⚠️  WARNING] Could not load ML module: {e}")
+    print("[INFO] Running without ML threat detection.")
+    ML_ENABLED = False
+    ml_engine = None
 
 # Get interface and local IP
 iface, my_ip = get_active_ip()
@@ -24,12 +45,14 @@ iface, my_ip = get_active_ip()
 alert_callback = None
 
 def set_alert_callback(callback):
+    """Set the callback function for alerts"""
     global alert_callback
     alert_callback = callback
     print("[+] Alert callback set successfully.")
 
 # Filter out noisy/irrelevant packets
 def is_irrelevant_packet(packet, size):
+    """Filter out broadcast, local, and noisy packets"""
     if packet.haslayer(ARP):
         return True
     if Ether in packet and packet[Ether].dst == "ff:ff:ff:ff:ff:ff":
@@ -53,8 +76,9 @@ def is_irrelevant_packet(packet, size):
             return True
     return False
 
-# JSON-like update handler
+# Packet processor for traffic analysis
 def process_packet_json(packet):
+    """Process packet and update traffic statistics"""
     try:
         size = len(bytes(packet))
         src_ip, dst_ip = "N/A", "N/A"
@@ -104,7 +128,7 @@ def process_packet_json(packet):
         update_stats(src_ip, src_port, dst_ip, dst_port, protocol, size, direction)
 
     except Exception as e:
-        print("[ERROR processing packet]", e)
+        print(f"[ERROR] Packet processing error: {e}")
 
 # Flow feature tracker
 flows = defaultdict(lambda: {
@@ -120,15 +144,22 @@ flows = defaultdict(lambda: {
     'win_list': []
 })
 
-# Flow processor
+# Process packets for flow-based ML detection
 def process_packet_flow(pkt):
+    """Extract flow features from packet"""
     if not pkt.haslayer(IP):
         return
+
     ip = pkt[IP]
     proto = 'TCP' if pkt.haslayer(TCP) else ('UDP' if pkt.haslayer(UDP) else 'OTHER')
-    sport = pkt[TCP].sport if proto == 'TCP' else (pkt[UDP].sport if proto == 'UDP' else None)
-    dport = pkt[TCP].dport if proto == 'TCP' else (pkt[UDP].dport if proto == 'UDP' else None)
-    if sport is None or dport is None:
+
+    if proto == 'TCP':
+        sport = pkt[TCP].sport
+        dport = pkt[TCP].dport
+    elif proto == 'UDP':
+        sport = pkt[UDP].sport
+        dport = pkt[UDP].dport
+    else:
         return
 
     flow_key = (ip.src, ip.dst, sport, dport, proto)
@@ -146,17 +177,19 @@ def process_packet_flow(pkt):
     f['byte_count'] += length
     f['packet_sizes'].append(length)
     f['ttl_list'].append(ip.ttl)
+
     if proto == 'TCP':
         tcp = pkt[TCP]
         f['win_list'].append(tcp.window)
         flags = tcp.flags
-        if flags & 0x02:
+        if flags & 0x02:  # SYN flag
             f['syn_count'] += 1
-        if flags & 0x10:
+        if flags & 0x10:  # ACK flag
             f['ack_count'] += 1
 
-# Feature extractor
+# Extract features from flows
 def extract_flow_features(flows):
+    """Extract ML features from network flows"""
     records = []
     for (src, dst, sp, dp, proto), f in flows.items():
         duration = (f['last_time'] - f['start_time']) if f['start_time'] else 0
@@ -171,63 +204,112 @@ def extract_flow_features(flows):
             f['byte_count'],
             sum(pkt_sizes) / len(pkt_sizes),
             pd.Series(pkt_sizes).std() or 0,
-            sum(iats) / len(iats),
-            pd.Series(iats).std() or 0,
+            sum(iats) / len(iats) if iats else 0,
+            pd.Series(iats).std() or 0 if iats else 0,
             f['syn_count'],
             f['ack_count'],
-            sum(ttls) / len(ttls),
-            sum(wins) / len(wins)
+            sum(ttls) / len(ttls) if ttls else 0,
+            sum(wins) / len(wins) if wins else 0
         ]
 
         while len(features) < 13:
             features.append(0.0)
 
-        records.append((src, dst, proto, features))
+        records.append((src, dst, sp, dp, proto, features))
     return records
 
 # ML Prediction
 def predict_flows(flow_features):
-    for src, dst, proto, feat in flow_features:
+    """Predict anomalies using ML model"""
+    if not ML_ENABLED or not ml_engine:
+        return
+
+    for src, dst, src_port, dst_port, proto, feat in flow_features:
         try:
-            X = np.array(feat).reshape(1, -1)
-            X_scaled = scaler.transform(X)
-            X_scaled = np.nan_to_num(X_scaled, nan=0.0)
-            X_pca = pca.transform(X_scaled)
-            pred = model.predict(X_pca)[0]
-            if pred != "BENIGN":
-                print(f"[⚠️] Attack detected: {pred} from {src} to {dst} ({proto})")
+            flow_data = {
+                'src_ip': src,
+                'dst_ip': dst,
+                'src_port': src_port,
+                'dst_port': dst_port,
+                'protocol': proto,
+                'flow_duration': feat[0],
+                'packet_count': feat[1],
+                'byte_count': feat[2],
+                'avg_pkt_size': feat[3],
+                'std_pkt_size': feat[4],
+                'mean_iat': feat[5],
+                'std_iat': feat[6],
+                'syn_count': feat[7],
+                'ack_count': feat[8],
+                'avg_ttl': feat[9],
+                'avg_win': feat[10]
+            }
+
+            result = ml_engine.predict(flow_data)
+
+            if result['error'] is None and result['prediction'] == 1:
+                print(f"[⚠️  ANOMALY DETECTED] {src} → {dst} ({proto})")
+                print(f"[ML] Confidence: {result['confidence']:.2%}")
+
                 if alert_callback:
-                    print("[CALLBACK DEBUG] Triggering alert callback...")
-                    alert_callback(pred, src, dst, proto)
-            else:
-                print(f"[✅] Flow from {src} to {dst} is benign ({proto})")
+                    alert_callback("Network Anomaly", src, dst, proto)
+
         except Exception as e:
-            print("[Prediction Error]", e)
+            print(f"[ERROR] ML prediction error: {e}")
 
-# Combined handler
+# Combined packet handler
 def combined_packet_handler(pkt):
-    size = len(bytes(pkt))
-    if is_irrelevant_packet(pkt, size):
-        return 
-    process_packet_json(pkt)
-    process_packet_flow(pkt)
-
+    """Main packet handler combining traffic analysis and ML detection"""
+    try:
+        size = len(bytes(pkt))
+        if is_irrelevant_packet(pkt, size):
+            return
+        process_packet_json(pkt)
+        if ML_ENABLED:
+            process_packet_flow(pkt)
+    except Exception as e:
+        print(f"[ERROR] Packet handler error: {e}")
 
 # Timer-based prediction
 def run_prediction_after_interval(interval_sec):
+    """Run ML predictions at regular intervals"""
+    if not ML_ENABLED:
+        return
+
     def delayed_predict():
         while True:
             time.sleep(interval_sec)
-            print("\n[+] Interval reached. Extracting & predicting...\n")
-            features = extract_flow_features(flows)
-            predict_flows(features)
+            try:
+                features = extract_flow_features(flows)
+                if features:
+                    print(f"[ML] Analyzing {len(features)} flows...")
+                    predict_flows(features)
+                    # Clear old flows
+                    flows.clear()
+            except Exception as e:
+                print(f"[ERROR] Prediction interval error: {e}")
 
     threading.Thread(target=delayed_predict, daemon=True).start()
 
 # Start sniffing
-print("[*] Starting sniffing on interface:", iface)
-run_prediction_after_interval(10)
+print(f"[*] Starting network packet capture on interface: {iface}")
+print(f"[*] Local IP: {my_ip}")
+if ML_ENABLED:
+    print("[+] ML threat detection: ENABLED")
+    run_prediction_after_interval(10)
+else:
+    print("[*] ML threat detection: DISABLED (models not loaded)")
 
 def start_sniffing():
-    print("[*] Sniffing packets...")
-    sniff(iface=iface, prn=combined_packet_handler, store=False)
+    """Main function to start packet sniffing"""
+    try:
+        print("[*] Packet sniffer started. Listening for traffic...")
+        sniff(iface=iface, prn=combined_packet_handler, store=False)
+    except PermissionError:
+        print("[ERROR] Packet capture requires root/admin privileges!")
+        print("[INFO] Try running with: sudo python3 app2.py (Linux/macOS)")
+        print("[INFO] Or run as Administrator (Windows)")
+        return
+    except Exception as e:
+        print(f"[ERROR] Sniffing error: {e}")
+        return
