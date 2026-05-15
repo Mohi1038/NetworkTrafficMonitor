@@ -1,7 +1,7 @@
 console.log('[Renderer] Starting renderer.js');
 
-// Try API endpoints in order; prefer deployed Render URL, then localhost fallbacks
-const API_CANDIDATES = ['https://networktrafficmonitor.onrender.com', 'http://127.0.0.1:5000', 'http://127.0.0.1:5001'];
+// Packaged app must only read local traffic from the user's machine.
+const API_CANDIDATES = ['http://127.0.0.1:5000', 'http://127.0.0.1:5001'];
 
 async function apiFetch(path, opts) {
   let lastErr = null;
@@ -28,6 +28,66 @@ let timePoints = [];
 let incomingBytes = [];
 let outgoingBytes = [];
 let updateInterval = 2000; // Default update interval in ms
+let monitoringStarted = false;
+let consentGranted = false;
+
+const consentModal = document.getElementById('capture-consent-modal');
+const consentMessage = document.getElementById('capture-consent-message');
+const allowCaptureButton = document.getElementById('allow-capture-btn');
+const denyCaptureButton = document.getElementById('deny-capture-btn');
+
+function showConsentModal(message = '') {
+  if (consentModal) {
+    consentModal.classList.remove('hidden');
+  }
+  if (consentMessage) {
+    consentMessage.textContent = message;
+  }
+}
+
+function hideConsentModal() {
+  if (consentModal) {
+    consentModal.classList.add('hidden');
+  }
+}
+
+async function loadConsentStatus() {
+  try {
+    const status = window.api?.getConsentStatus
+      ? await window.api.getConsentStatus()
+      : await apiFetch('/api/consent/status');
+
+    consentGranted = Boolean(status?.allowed);
+    return status;
+  } catch (error) {
+    console.error('[Consent] Failed to load consent status:', error);
+    consentGranted = false;
+    return { success: false, allowed: false };
+  }
+}
+
+async function requestConsent() {
+  try {
+    const response = window.api?.acceptConsent
+      ? await window.api.acceptConsent()
+      : await apiFetch('/api/consent/accept', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ allowed: true })
+        }).then((res) => res.json());
+
+    consentGranted = Boolean(response?.success);
+    if (consentGranted) {
+      hideConsentModal();
+      startMonitoring();
+    }
+    return response;
+  } catch (error) {
+    console.error('[Consent] Failed to grant consent:', error);
+    showConsentModal('Unable to start capture yet. Make sure the local backend is running, then try again.');
+    throw error;
+  }
+}
 
 // AREA CHART SETUP
 const trafficCtx = document.getElementById('trafficChart').getContext('2d');
@@ -617,6 +677,16 @@ async function updateCharts() {
   }
 }
 
+function startMonitoring() {
+  if (monitoringStarted || !consentGranted) {
+    return;
+  }
+
+  monitoringStarted = true;
+  window.updateTimer = setInterval(updateCharts, updateInterval);
+  updateCharts();
+}
+
 // Speed Test Functionality
 let isSpeedTesting = false;
 
@@ -738,10 +808,27 @@ async function startSpeedTest() {
 // Attach event listener to speed test button
 document.getElementById('speedtest-btn')?.addEventListener('click', startSpeedTest);
 
-// Initialize the update timer with the default interval
-window.updateTimer = setInterval(updateCharts, updateInterval);
+async function initializeConsentFlow() {
+  const consentStatus = await loadConsentStatus();
 
-updateCharts();
+  if (consentStatus?.allowed) {
+    hideConsentModal();
+    startMonitoring();
+    return;
+  }
+
+  showConsentModal('This app will capture traffic only from this device after you allow it.');
+}
+
+allowCaptureButton?.addEventListener('click', async () => {
+  await requestConsent();
+});
+
+denyCaptureButton?.addEventListener('click', () => {
+  showConsentModal('Capture is paused until you allow local network access.');
+});
+
+initializeConsentFlow();
 
 /* ========== THEME MANAGEMENT ========== */
 function initTheme() {

@@ -9,6 +9,25 @@
 </head>
 
 <body>
+  <div id="capture-consent-modal" class="consent-modal hidden">
+    <div class="consent-card">
+      <h2>Permission Required</h2>
+      <p>
+        Network Traffic Monitor will capture traffic from <strong>this device only</strong> after you allow it.
+      </p>
+      <ul class="consent-list">
+        <li>Data is collected locally from your machine.</li>
+        <li>No remote server is used for packet capture in the packaged app.</li>
+        <li>You can stop using the app anytime by closing it.</li>
+      </ul>
+      <p id="capture-consent-message" class="consent-message"></p>
+      <div class="consent-actions">
+        <button id="deny-capture-btn" class="btn btn-secondary" type="button">Not now</button>
+        <button id="allow-capture-btn" class="btn btn-primary" type="button">Allow and Start</button>
+      </div>
+    </div>
+  </div>
+
   <header>
     <h1><i class="fas fa-chart-network"></i> Network Traffic Monitor</h1>
     <div class="header-content">

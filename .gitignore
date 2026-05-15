@@ -58,11 +58,15 @@ out/
 # Generated Data Files
 # ========================
 network_data.json
+backend/network_data_tmp.json
+backend/email_settings.json
+backend/capture_consent.json
 *.db
 *.sqlite
 *.sqlite3
 saved_emails/
 backend/saved_emails/
+backend/.ntm_cache/
 logs/
 *.log
 

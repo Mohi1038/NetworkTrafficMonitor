@@ -35,6 +35,42 @@ contextBridge.exposeInMainWorld('api', {
       }
     }
     return { status: 'error', message: 'No backend reachable' };
+  },
+
+  getConsentStatus: async () => {
+    const bases = ['http://127.0.0.1:5000', 'http://127.0.0.1:5001'];
+    for (const b of bases) {
+      try {
+        const res = await fetch(`${b}/api/consent/status`);
+        if (!res.ok) continue;
+        return await res.json();
+      } catch (error) {
+        // try next
+      }
+    }
+    return { success: false, allowed: false, capture_running: false };
+  },
+
+  acceptConsent: async () => {
+    const bases = ['http://127.0.0.1:5000', 'http://127.0.0.1:5001'];
+    let lastErr = null;
+    for (const b of bases) {
+      try {
+        const res = await fetch(`${b}/api/consent/accept`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ allowed: true })
+        });
+        if (!res.ok) {
+          lastErr = new Error(`HTTP error! status: ${res.status}`);
+          continue;
+        }
+        return await res.json();
+      } catch (error) {
+        lastErr = error;
+      }
+    }
+    throw lastErr;
   }
 });
 

@@ -53,6 +53,36 @@ from rule_engine import get_rule_engine
 
 BASE_DIR = Path(__file__).parent
 DATA_FILE = BASE_DIR / "network_data.json"
+CONSENT_FILE = BASE_DIR / 'capture_consent.json'
+
+capture_thread = None
+capture_thread_lock = threading.Lock()
+
+
+def capture_consent_granted():
+    if os.environ.get('NTM_CAPTURE_CONSENT', '').strip() == '1':
+        return True
+
+    if CONSENT_FILE.exists():
+        try:
+            consent_data = json.loads(CONSENT_FILE.read_text())
+            return bool(consent_data.get('allowed'))
+        except Exception:
+            return False
+
+    return False
+
+
+def start_capture_thread():
+    global capture_thread
+
+    with capture_thread_lock:
+        if capture_thread and capture_thread.is_alive():
+            return True
+
+        capture_thread = threading.Thread(target=start_sniffing, daemon=True)
+        capture_thread.start()
+        return True
 
 # ---------- JSON File Init ----------
 def temp():
@@ -81,11 +111,39 @@ def temp():
 set_alert_callback(alert_callback)
 
 threading.Thread(target=start_sniffing, daemon=True).start()
+if capture_consent_granted():
+    start_capture_thread()
+else:
+    print('[INFO] Network capture is paused until user consent is granted.')
 
 # ---------- Health Check Endpoint ----------
 @app.route("/api/health")
 def health_check():
     return jsonify({"status": "ok", "message": "Backend is running"}), 200
+
+
+@app.route("/api/consent/status")
+def consent_status():
+    return jsonify({
+        "success": True,
+        "allowed": capture_consent_granted(),
+        "capture_running": bool(capture_thread and capture_thread.is_alive())
+    }), 200
+
+
+@app.route("/api/consent/accept", methods=["POST"])
+def accept_consent():
+    try:
+        consent_payload = {
+            "allowed": True,
+            "timestamp": time.time()
+        }
+        CONSENT_FILE.write_text(json.dumps(consent_payload))
+        os.environ['NTM_CAPTURE_CONSENT'] = '1'
+        start_capture_thread()
+        return jsonify({"success": True, "message": "Capture consent saved and network capture started."}), 200
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
 
 # ---------- API Endpoint ----------
 @app.route("/api/data")
