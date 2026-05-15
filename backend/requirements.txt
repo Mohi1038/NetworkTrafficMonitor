@@ -1,8 +1,10 @@
 flask
-scapy
 flask-cors
+scapy
 psutil
 joblib
 numpy
 pandas
 scikit-learn
+python-dotenv
+requests
