@@ -5,10 +5,59 @@
     "homepage": "./",
     "scripts": {
         "start": "electron .",
-        "dev": "electron . --debug"
+        "dev": "electron . --debug",
+        "build": "electron-builder",
+        "build-win": "electron-builder --win --publish never",
+        "build-mac": "electron-builder --mac --publish never",
+        "build-linux": "electron-builder --linux --publish never",
+        "build-all": "electron-builder -mwl --publish never"
+    },
+    "build": {
+        "appId": "com.networktrafficmonitor.app",
+        "productName": "Network Traffic Monitor",
+        "directories": {
+            "buildResources": "assets"
+        },
+        "files": [
+            "main.js",
+            "preload.js",
+            "renderer.js",
+            "index.html",
+            "style.css",
+            "package.json"
+        ],
+        "win": {
+            "target": [
+                "nsis",
+                "portable"
+            ],
+            "certificateFile": null,
+            "certificatePassword": null
+        },
+        "nsis": {
+            "oneClick": false,
+            "allowToChangeInstallationDirectory": true,
+            "createDesktopShortcut": true,
+            "createStartMenuShortcut": true
+        },
+        "mac": {
+            "target": [
+                "dmg",
+                "zip"
+            ],
+            "category": "public.app-category.utilities"
+        },
+        "linux": {
+            "target": [
+                "AppImage",
+                "deb"
+            ],
+            "category": "Utility"
+        }
     },
     "devDependencies": {
-        "electron": "^27.0.0"
+        "electron": "^27.0.0",
+        "electron-builder": "^24.6.4"
     },
     "dependencies": {
         "chart.js": "^4.4.8",
