@@ -1,7 +1,7 @@
 console.log('[Renderer] Starting renderer.js');
 
-// Try API ports in order; frontend will attempt each until one responds
-const API_CANDIDATES = ['http://127.0.0.1:5000', 'http://127.0.0.1:5001'];
+// Try API endpoints in order; prefer deployed Render URL, then localhost fallbacks
+const API_CANDIDATES = ['https://networktrafficmonitor.onrender.com', 'http://127.0.0.1:5000', 'http://127.0.0.1:5001'];
 
 async function apiFetch(path, opts) {
   let lastErr = null;
