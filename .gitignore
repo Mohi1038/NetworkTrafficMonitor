@@ -1,0 +1,145 @@
+# ========================
+# Environment & Secrets
+# ========================
+.env
+.env.local
+.env.*.local
+.env.*.backup
+
+# ========================
+# Python
+# ========================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environments
+venv/
+ENV/
+env/
+.venv
+pipenv.lock
+
+# Pytest
+.pytest_cache/
+.coverage
+htmlcov/
+
+# ========================
+# Node.js & Frontend
+# ========================
+node_modules/
+package-lock.json
+dist/
+out/
+.env.local
+
+# ========================
+# Generated Data Files
+# ========================
+network_data.json
+*.db
+*.sqlite
+*.sqlite3
+saved_emails/
+backend/saved_emails/
+logs/
+*.log
+
+# ========================
+# IDE & Editor Files
+# ========================
+.vscode/
+.idea/
+*.swp
+*.swo
+*.swn
+.DS_Store
+.project
+.pydevproject
+.settings/
+*.sublime-project
+*.sublime-workspace
+
+# ========================
+# OS Files
+# ========================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# ========================
+# Build & Temp Files
+# ========================
+*.tmp
+*.temp
+*.bak
+*.backup
+*.orig
+~*
+
+# ========================
+# macOS Specific
+# ========================
+.AppleDouble
+.LSOverride
+*.localized
+
+# ========================
+# Electron Build
+# ========================
+/release
+/out
+.gitignore.bak
+
+# ========================
+# Documentation (if generated)
+# ========================
+site/
+docs/_build/
+
+# ========================
+# ML Model Files (Optional - only if large)
+# ========================
+# *.h5
+# *.pkl
+# *.joblib
+# models/
+
+# ========================
+# CSV Data Files (Optional - only if sensitive)
+# ========================
+# *.csv
+# data/
+
+# ========================
+# Miscellaneous
+# ========================
+.cache/
+.venv/
+*.pid
+.env.example.local
