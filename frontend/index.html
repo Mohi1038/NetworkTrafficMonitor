@@ -316,7 +316,7 @@
     <div class="table-container">
       <h3><i class="fas fa-table"></i> Network Traffic Details</h3>
       <div class="table-filters">
-        <input type="text" id="traffic-search" placeholder="Search IP, protocol...">
+        <input type="text" id="traffic-search" placeholder="Search IP, domain, protocol...">
         <select id="protocol-filter">
           <option value="all">All Protocols</option>
           <option value="TCP">TCP</option>
@@ -329,22 +329,39 @@
           <option value="incoming">Incoming</option>
           <option value="outgoing">Outgoing</option>
         </select>
+        <select id="rows-per-page">
+          <option value="10">10 rows</option>
+          <option value="25" selected>25 rows</option>
+          <option value="50">50 rows</option>
+        </select>
       </div>
-      <table id="traffic-table">
-        <thead>
-          <tr>
-            <th>Time</th>
-            <th>Source</th>
-            <th>Destination</th>
-            <th>Protocol</th>
-            <th>Port</th>
-            <th>Size</th>
-          </tr>
-        </thead>
-        <tbody id="traffic-tbody">
-          <!-- Table rows will be populated dynamically -->
-        </tbody>
-      </table>
+      <div class="table-wrapper">
+        <table id="traffic-table">
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Source</th>
+              <th>Source Domain</th>
+              <th>Destination</th>
+              <th>Dest Domain</th>
+              <th>Protocol</th>
+              <th>App</th>
+              <th>Size</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="traffic-tbody">
+            <!-- Table rows will be populated dynamically -->
+          </tbody>
+        </table>
+      </div>
+      <div class="pagination-controls">
+        <button id="prev-page" class="pagination-btn">← Previous</button>
+        <div class="pagination-info">
+          <span>Page <span id="current-page">1</span> of <span id="total-pages">1</span></span>
+        </div>
+        <button id="next-page" class="pagination-btn">Next →</button>
+      </div>
     </div>
   </div>
 

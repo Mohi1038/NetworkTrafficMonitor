@@ -46,6 +46,8 @@ const isDev = require('electron-is-dev');
 
 let backendProcess = null;
 
+const BACKEND_BASE_URLS = ['http://127.0.0.1:5000', 'http://127.0.0.1:5001'];
+
 function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -89,6 +91,25 @@ function getPythonCommandCandidates() {
   ];
 }
 
+async function getHealthyBackendBaseUrl() {
+  for (const baseUrl of BACKEND_BASE_URLS) {
+    try {
+      const response = await fetch(`${baseUrl}/api/health`);
+      if (response.ok) {
+        return baseUrl;
+      }
+    } catch (error) {
+      // try next candidate
+    }
+  }
+
+  return null;
+}
+
+function getPreferredBackendPort() {
+  return process.env.NTM_BACKEND_PORT || '5001';
+}
+
 function startBackend() {
   if (backendProcess && !backendProcess.killed) {
     return Promise.resolve({ started: true, reused: true });
@@ -98,6 +119,12 @@ function startBackend() {
   const backendScript = path.join(backendDir, 'app2.py');
 
   return new Promise((resolve, reject) => {
+    getHealthyBackendBaseUrl().then((healthyBaseUrl) => {
+      if (healthyBaseUrl) {
+        resolve({ started: true, reused: true, baseUrl: healthyBaseUrl });
+        return;
+      }
+
     const candidates = getPythonCommandCandidates();
     let lastError = null;
 
@@ -113,7 +140,7 @@ function startBackend() {
         env: {
           ...process.env,
           FLASK_HOST: '127.0.0.1',
-          FLASK_PORT: process.env.NTM_BACKEND_PORT || '5001',
+          FLASK_PORT: getPreferredBackendPort(),
           FLASK_DEBUG: 'False',
           NTM_CAPTURE_CONSENT: '1'
         },
@@ -208,6 +235,7 @@ function startBackend() {
     };
 
     tryNextCandidate();
+    });
   });
 }
 

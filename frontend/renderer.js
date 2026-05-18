@@ -28,6 +28,7 @@ let timePoints = [];
 let incomingBytes = [];
 let outgoingBytes = [];
 let updateInterval = 2000; // Default update interval in ms
+let lastTrafficRows = [];
 let monitoringStarted = false;
 let consentGranted = false;
 
@@ -516,26 +517,43 @@ function updateSummaryStats(data) {
   document.getElementById('top-protocol').textContent = topProtocol;
 }
 
-// Update traffic table
-function updateTrafficTable(data) {
-  const tbody = document.getElementById('traffic-tbody');
-  const tableData = data?.traffic_table || [];
+// Pagination variables
+let currentPage = 1;
+let rowsPerPage = 25;
+let allFilteredTraffic = [];
 
-  // Get filter values
+// Update traffic table with pagination
+function updateTrafficTable(data) {
+  const tableData = data?.traffic_table || [];
   const searchTerm = document.getElementById('traffic-search')?.value?.toLowerCase() || '';
   const protocolFilter = document.getElementById('protocol-filter')?.value || 'all';
   const directionFilter = document.getElementById('direction-filter')?.value || 'all';
 
-  // Clear existing rows first
-  tbody.innerHTML = '';
+  // Get rows per page from dropdown
+  rowsPerPage = parseInt(document.getElementById('rows-per-page')?.value) || 25;
 
-  // Add filtered data
-  tableData.slice(-50).reverse().forEach(entry => {
+  // Filter and prepare data
+  allFilteredTraffic = [];
+  tableData.slice(-200).reverse().forEach(entry => {
+    const searchableValues = [
+      entry.src_ip,
+      entry.dst_ip,
+      entry.src_port,
+      entry.dst_port,
+      entry.protocol,
+      entry.application_protocol,
+      entry.src_domain,
+      entry.dst_domain,
+      entry.application_domain,
+      entry.http_host,
+      entry.tls_sni,
+      entry.dns_query,
+      entry.direction,
+      entry.payload_preview
+    ].map(value => String(value || '').toLowerCase());
+
     // Apply filters
-    if (searchTerm &&
-        !String(entry.src_ip).toLowerCase().includes(searchTerm) &&
-        !String(entry.dst_ip).toLowerCase().includes(searchTerm) &&
-        !String(entry.protocol).toLowerCase().includes(searchTerm)) {
+    if (searchTerm && !searchableValues.some(value => value.includes(searchTerm))) {
       return;
     }
 
@@ -547,17 +565,90 @@ function updateTrafficTable(data) {
       return;
     }
 
+    allFilteredTraffic.push(entry);
+  });
+
+  // Reset to page 1 when filters change
+  currentPage = 1;
+  renderTablePage();
+}
+
+function renderTablePage() {
+  const tbody = document.getElementById('traffic-tbody');
+  tbody.innerHTML = '';
+
+  // Calculate pagination
+  const totalPages = Math.ceil(allFilteredTraffic.length / rowsPerPage);
+  const startIndex = (currentPage - 1) * rowsPerPage;
+  const endIndex = startIndex + rowsPerPage;
+  const pageData = allFilteredTraffic.slice(startIndex, endIndex);
+
+  // Populate table rows
+  pageData.forEach((entry, index) => {
+    const rowIndex = startIndex + index;
     const row = document.createElement('tr');
     row.innerHTML = `
-      <td>${entry.timestamp}</td>
-      <td>${entry.src_ip}:${entry.src_port}</td>
-      <td>${entry.dst_ip}:${entry.dst_port}</td>
-      <td>${entry.protocol}</td>
-      <td>${entry.dst_port}</td>
-      <td>${formatBytes(entry.bytes)}</td>
+      <td>${escapeHtml(entry.timestamp || '')}</td>
+      <td>${escapeHtml(`${entry.src_ip || 'N/A'}:${entry.src_port || 'N/A'}`)}</td>
+      <td title="${escapeHtml(entry.src_domain || '')}">${escapeHtml(entry.src_domain || '-')}</td>
+      <td>${escapeHtml(`${entry.dst_ip || 'N/A'}:${entry.dst_port || 'N/A'}`)}</td>
+      <td title="${escapeHtml(entry.dst_domain || '')}">${escapeHtml(entry.dst_domain || '-')}</td>
+      <td>${escapeHtml(entry.protocol || 'UNKNOWN')}</td>
+      <td>${escapeHtml(entry.application_protocol || entry.protocol || 'UNKNOWN')}</td>
+      <td>${escapeHtml(formatBytes(entry.bytes))}</td>
+      <td><button class="btn btn-secondary view-traffic-details" data-traffic-index="${rowIndex}" type="button">View</button></td>
     `;
     tbody.appendChild(row);
   });
+
+  // Update pagination controls
+  document.getElementById('current-page').textContent = currentPage;
+  document.getElementById('total-pages').textContent = Math.max(1, totalPages);
+  document.getElementById('prev-page').disabled = currentPage === 1;
+  document.getElementById('next-page').disabled = currentPage >= totalPages;
+}
+
+function openTrafficPacketDetail(entry) {
+  const modal = document.getElementById('security-modal');
+  const title = document.getElementById('modal-title');
+  const body = document.getElementById('modal-body');
+  const actionBtn = document.getElementById('modal-action');
+
+  title.textContent = 'Packet Inspection';
+  const details = {
+    timestamp: entry.timestamp || '',
+    direction: entry.direction || 'unknown',
+    source: `${entry.src_ip || 'N/A'}:${entry.src_port || 'N/A'}`,
+    source_domain: entry.src_domain || '-',
+    destination: `${entry.dst_ip || 'N/A'}:${entry.dst_port || 'N/A'}`,
+    destination_domain: entry.dst_domain || '-',
+    protocol: entry.protocol || 'UNKNOWN',
+    application_protocol: entry.application_protocol || entry.protocol || 'UNKNOWN',
+    application_domain: entry.application_domain || '-',
+    payload_preview: entry.payload_preview || '',
+    payload_hex_preview: entry.payload_hex_preview || '',
+    http_host: entry.http_host || '',
+    tls_sni: entry.tls_sni || '',
+    dns_query: entry.dns_query || '',
+    bytes: entry.bytes || 0
+  };
+
+  body.innerHTML = `
+    <div class="detail-alert">
+      <strong>${escapeHtml(details.protocol)}</strong>
+      <div>${escapeHtml(details.source)} → ${escapeHtml(details.destination)}</div>
+      <div>Domains: ${escapeHtml(details.source_domain)} → ${escapeHtml(details.destination_domain)}</div>
+      <div>Application: ${escapeHtml(details.application_protocol)}</div>
+      <div>Application domain: ${escapeHtml(details.application_domain)}</div>
+      <div>Direction: ${escapeHtml(details.direction)}</div>
+      <div>Size: ${escapeHtml(formatBytes(details.bytes))}</div>
+    </div>
+    <h4 style="margin-top:16px;">Captured Fields</h4>
+    <pre>${escapeHtml(JSON.stringify(details, null, 2))}</pre>
+  `;
+  actionBtn.textContent = 'Close';
+  actionBtn.onclick = () => modal.classList.add('hidden');
+  modal.classList.remove('hidden');
 }
 
 // Tab navigation
@@ -602,6 +693,26 @@ document.getElementById('apply-settings').addEventListener('click', () => {
 document.getElementById('traffic-search')?.addEventListener('input', () => updateTrafficTable(lastData));
 document.getElementById('protocol-filter')?.addEventListener('change', () => updateTrafficTable(lastData));
 document.getElementById('direction-filter')?.addEventListener('change', () => updateTrafficTable(lastData));
+document.getElementById('rows-per-page')?.addEventListener('change', () => {
+  currentPage = 1;
+  updateTrafficTable(lastData);
+});
+
+// Pagination button listeners
+document.getElementById('prev-page')?.addEventListener('click', () => {
+  if (currentPage > 1) {
+    currentPage--;
+    renderTablePage();
+  }
+});
+
+document.getElementById('next-page')?.addEventListener('click', () => {
+  const totalPages = Math.ceil(allFilteredTraffic.length / rowsPerPage);
+  if (currentPage < totalPages) {
+    currentPage++;
+    renderTablePage();
+  }
+});
 
 // Store the last data received to avoid unnecessary fetches
 let lastData = null;
@@ -1112,6 +1223,14 @@ document.addEventListener('click', (e) => {
   if (btn) {
     const t = btn.dataset.type;
     openSecurityDetail(t);
+  }
+
+  const trafficBtn = e.target.closest('.view-traffic-details');
+  if (trafficBtn) {
+    const index = Number(trafficBtn.dataset.trafficIndex);
+    if (Number.isInteger(index) && lastTrafficRows[index]) {
+      openTrafficPacketDetail(lastTrafficRows[index]);
+    }
   }
 });
 
