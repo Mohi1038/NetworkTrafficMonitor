@@ -699,6 +699,14 @@ body.dark-mode tbody tr:hover {
   border-color: #2ecc71;
 }
 
+.security-card.dpi-card {
+  border-left: 5px solid #17a2b8;
+}
+
+.security-card.dpi-card:hover {
+  border-color: #17a2b8;
+}
+
 .security-card.protocol-card {
   border-left: 5px solid #f39c12;
 }
