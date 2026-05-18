@@ -51,6 +51,19 @@ function hideConsentModal() {
   }
 }
 
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"]'/g, (character) => {
+    const entities = {
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;'
+    };
+    return entities[character] || character;
+  });
+}
+
 async function loadConsentStatus() {
   try {
     const status = window.api?.getConsentStatus
@@ -886,12 +899,14 @@ document.querySelectorAll('input[name="theme"]').forEach(radio => {
 async function updateSecurityStats() {
   try {
     // fetch DDoS alerts and threat summary in parallel
-    const [ddosResp, threatResp] = await Promise.all([
+    const [ddosResp, dpiResp, threatResp] = await Promise.all([
       apiFetch('/api/ddos/alerts'),
+      apiFetch('/api/dpi/stats'),
       apiFetch('/api/threat/summary')
     ]);
 
     const ddosJson = ddosResp && ddosResp.ok ? await ddosResp.json() : null;
+    const dpiJson = dpiResp && dpiResp.ok ? await dpiResp.json() : null;
     const threatJson = threatResp && threatResp.ok ? await threatResp.json() : null;
 
     // DDoS stats
@@ -905,6 +920,12 @@ async function updateSecurityStats() {
     const maliciousIps = Array.isArray(summary?.malicious_ips) ? summary.malicious_ips : (summary?.malicious || []);
     document.getElementById('suspicious-ips').textContent = maliciousIps.length || 0;
     document.getElementById('anomalies').textContent = summary?.anomalies_detected || summary?.anomalies || 0;
+
+    // DPI stats
+    const dpiStats = dpiJson?.statistics || {};
+    document.getElementById('dpi-packets').textContent = dpiStats?.total_packets || 0;
+    document.getElementById('dpi-payloads').textContent = dpiStats?.packets_with_payload || 0;
+    document.getElementById('dpi-alerts').textContent = dpiStats?.recent_alerts || 0;
 
     // Protocol analysis
     const protocols = (await (await apiFetch('/api/data')).json()).protocol_distribution || {};
@@ -921,18 +942,25 @@ async function updateSecurityStats() {
     document.getElementById('threat-level').textContent = threatLabel;
     document.getElementById('threat-bar').style.width = `${threatScore}%`;
 
-    // Render recent alerts list using DDoS alerts
+    // Render recent alerts list using DDoS and DPI alerts
+    const dpiAlerts = dpiJson?.alerts || [];
     const alertsList = document.getElementById('security-alerts');
     alertsList.innerHTML = '';
-    if (Array.isArray(ddosAlerts) && ddosAlerts.length) {
-      ddosAlerts.slice(0, 10).forEach(a => {
+    const mergedAlerts = [
+      ...ddosAlerts.map((alert) => ({ ...alert, sourceType: 'ddos' })),
+      ...dpiAlerts.map((alert) => ({ ...alert, sourceType: 'dpi' }))
+    ];
+    if (mergedAlerts.length) {
+      mergedAlerts.slice(0, 10).forEach(a => {
         const el = document.createElement('div');
-        el.className = 'alert-item warning';
+        el.className = a.sourceType === 'dpi' ? 'alert-item info' : 'alert-item warning';
+        const title = a.rule_name || a.rule_title || a.summary || a.type || (a.sourceType === 'dpi' ? 'Payload alert' : 'DDoS attempt');
+        const time = a.timestamp || a.first_seen || a.time || 'just now';
         el.innerHTML = `
           <span class="alert-icon"><i class="fas fa-exclamation-circle"></i></span>
           <div class="alert-content">
-            <span class="alert-title">${a.summary || a.type || 'DDoS attempt'}</span>
-            <span class="alert-time">${a.first_seen || a.time || 'just now'}</span>
+            <span class="alert-title">${title}</span>
+            <span class="alert-time">${time}</span>
           </div>
         `;
         alertsList.appendChild(el);
@@ -985,6 +1013,30 @@ async function openSecurityDetail(type) {
           console.error('Failed to create block rules', err);
           alert('Failed to create block rules: ' + err.message);
         }
+      };
+    } else if (type === 'dpi') {
+      title.textContent = 'Deep Packet Inspection Report';
+      const [alertsResp, statsResp] = await Promise.all([
+        apiFetch('/api/dpi/alerts'),
+        apiFetch('/api/dpi/stats')
+      ]);
+      const alertsJson = alertsResp.ok ? await alertsResp.json() : {};
+      const statsJson = statsResp.ok ? await statsResp.json() : {};
+      const alerts = alertsJson.alerts || [];
+      const stats = statsJson.statistics || {};
+      body.innerHTML = `
+        <h4>DPI Statistics</h4>
+        <pre>${JSON.stringify(stats, null, 2)}</pre>
+        <h4>Recent Payload Alerts (${alerts.length})</h4>
+        ${alerts.length ? alerts.slice(0, 25).map(a => {
+          const pkt = a.packet_data || {};
+          return `<div class="detail-alert"><strong>${escapeHtml(a.rule_name || 'Payload alert')}</strong><div>Source: ${escapeHtml(pkt.src_ip || 'unknown')}:${escapeHtml(pkt.src_port || 'n/a')}</div><div>Destination: ${escapeHtml(pkt.dst_ip || 'unknown')}:${escapeHtml(pkt.dst_port || 'n/a')}</div><div>Application: ${escapeHtml(pkt.application_protocol || pkt.protocol || 'unknown')}</div><div>Method: ${escapeHtml(pkt.http_method || 'n/a')}</div><div>Host: ${escapeHtml(pkt.http_host || pkt.tls_sni || pkt.dns_query || 'n/a')}</div><div>Preview: ${escapeHtml((pkt.payload_preview || pkt.payload || '').slice(0, 240))}</div></div>`;
+        }).join('') : '<p>No DPI alerts detected yet.</p>'}
+      `;
+      actionBtn.textContent = 'Refresh DPI Data';
+      actionBtn.onclick = async () => {
+        await updateSecurityStats();
+        await openSecurityDetail('dpi');
       };
     } else if (type === 'threat') {
       title.textContent = 'Threat Intelligence Report';
