@@ -2,6 +2,7 @@ import time
 import os
 import sys
 import threading
+import math
 from collections import defaultdict
 from pathlib import Path
 
@@ -23,20 +24,29 @@ check_privileges()
 from scapy.all import sniff, IP, IPv6, TCP, UDP, ARP, Ether
 from traffic_analyzer import update_stats
 from utils import get_active_ip
-import numpy as np
-import pandas as pd
+from dpi_engine import inspect_packet as inspect_dpi_packet
 
-# Try to import ML inference module
-try:
-    from ml_models.ml_inference import get_ml_engine
-    ml_engine = get_ml_engine()
-    ML_ENABLED = ml_engine.is_loaded
-    print("[+] ML inference module loaded successfully.")
-except Exception as e:
-    print(f"[⚠️  WARNING] Could not load ML module: {e}")
-    print("[INFO] Running without ML threat detection.")
-    ML_ENABLED = False
-    ml_engine = None
+
+def _stddev(values):
+    """Compute population stddev without importing heavy data libs at startup."""
+    if not values or len(values) < 2:
+        return 0.0
+    mean = sum(values) / len(values)
+    variance = sum((v - mean) ** 2 for v in values) / len(values)
+    return math.sqrt(variance)
+
+# Try to import ML inference module only when explicitly enabled.
+ML_ENABLED = False
+ml_engine = None
+if os.environ.get("NTM_ENABLE_ML", "0").strip() == "1":
+    try:
+        from ml_models.ml_inference import get_ml_engine
+        ml_engine = get_ml_engine()
+        ML_ENABLED = bool(getattr(ml_engine, "is_loaded", False))
+        print("[+] ML inference module loaded successfully.")
+    except Exception as e:
+        print(f"[⚠️  WARNING] Could not load ML module: {e}")
+        print("[INFO] Running without ML threat detection.")
 
 # Get interface and local IP
 iface, my_ip = get_active_ip()
@@ -203,9 +213,9 @@ def extract_flow_features(flows):
             f['packet_count'],
             f['byte_count'],
             sum(pkt_sizes) / len(pkt_sizes),
-            pd.Series(pkt_sizes).std() or 0,
+            _stddev(pkt_sizes),
             sum(iats) / len(iats) if iats else 0,
-            pd.Series(iats).std() or 0 if iats else 0,
+            _stddev(iats),
             f['syn_count'],
             f['ack_count'],
             sum(ttls) / len(ttls) if ttls else 0,
@@ -265,6 +275,18 @@ def combined_packet_handler(pkt):
         if is_irrelevant_packet(pkt, size):
             return
         process_packet_json(pkt)
+        packet_data, alerts = inspect_dpi_packet(pkt, local_ip=my_ip)
+        if alerts and alert_callback:
+            for alert in alerts:
+                packet_info = alert.get("packet_data", packet_data) or packet_data
+                attack_type = f"DPI: {alert.get('rule_name', 'Suspicious Payload')}"
+                src = packet_info.get("src_ip", "unknown")
+                dst = packet_info.get("dst_ip", "unknown")
+                protocol = packet_info.get("application_protocol") or packet_info.get("protocol", "unknown")
+                try:
+                    alert_callback(attack_type, src, dst, protocol)
+                except Exception as callback_error:
+                    print(f"[ERROR] DPI alert callback failed: {callback_error}")
         if ML_ENABLED:
             process_packet_flow(pkt)
     except Exception as e:
