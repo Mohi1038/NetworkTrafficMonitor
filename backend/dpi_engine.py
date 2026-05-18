@@ -8,6 +8,7 @@ feeds the resulting packet context into the rule engine.
 from collections import defaultdict, deque
 from datetime import datetime
 import re
+import socket
 import threading
 
 from scapy.all import ARP, Ether, IP, IPv6, Raw, TCP, UDP
@@ -47,6 +48,24 @@ def _safe_hex_preview(payload, limit=128):
     if not payload:
         return ""
     return payload[:limit].hex()
+
+
+_domain_cache = {}
+
+
+def _reverse_dns(ip_address):
+    if not ip_address or ip_address in {"N/A", "unknown"}:
+        return ""
+    if ip_address in _domain_cache:
+        return _domain_cache[ip_address]
+
+    try:
+        hostname = socket.gethostbyaddr(ip_address)[0]
+    except Exception:
+        hostname = ""
+
+    _domain_cache[ip_address] = hostname
+    return hostname
 
 
 class DPIEngine:
@@ -211,6 +230,16 @@ class DPIEngine:
         http_data = self._parse_http(payload_text)
         dns_data = self._parse_dns(packet)
         tls_sni = self._parse_tls_sni(packet)
+        src_domain = _reverse_dns(src_ip)
+        dst_domain = _reverse_dns(dst_ip)
+
+        application_domain = ""
+        if http_data["http_host"]:
+            application_domain = http_data["http_host"]
+        elif tls_sni:
+            application_domain = tls_sni
+        elif dns_data["dns_query"]:
+            application_domain = dns_data["dns_query"]
 
         if http_data["http_method"]:
             application_protocol = "HTTP"
@@ -238,6 +267,9 @@ class DPIEngine:
             "protocol": network_protocol,
             "application_protocol": application_protocol,
             "direction": direction,
+            "src_domain": src_domain,
+            "dst_domain": dst_domain,
+            "application_domain": application_domain,
             "packet_size": len(bytes(packet)),
             "payload_length": len(payload),
             "payload": payload_text,

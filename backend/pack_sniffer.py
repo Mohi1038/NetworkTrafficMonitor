@@ -53,6 +53,7 @@ iface, my_ip = get_active_ip()
 
 # Global callback holder
 alert_callback = None
+FILTER_NOISY_PACKETS = os.environ.get("NTM_FILTER_NOISY_PACKETS", "0").strip() == "1"
 
 def set_alert_callback(callback):
     """Set the callback function for alerts"""
@@ -87,13 +88,14 @@ def is_irrelevant_packet(packet, size):
     return False
 
 # Packet processor for traffic analysis
-def process_packet_json(packet):
+def process_packet_json(packet, packet_data=None):
     """Process packet and update traffic statistics"""
     try:
         size = len(bytes(packet))
         src_ip, dst_ip = "N/A", "N/A"
         src_port, dst_port = "N/A", "N/A"
         protocol = "UNKNOWN"
+        extra_fields = {}
 
         if ARP in packet:
             protocol = "ARP"
@@ -134,8 +136,27 @@ def process_packet_json(packet):
         elif Ether in packet:
             protocol = hex(packet[Ether].type)
 
+        if packet_data:
+            src_ip = packet_data.get("src_ip", src_ip)
+            dst_ip = packet_data.get("dst_ip", dst_ip)
+            src_port = packet_data.get("src_port", src_port)
+            dst_port = packet_data.get("dst_port", dst_port)
+            extra_fields = {
+                "src_domain": packet_data.get("src_domain", ""),
+                "dst_domain": packet_data.get("dst_domain", ""),
+                "application_domain": packet_data.get("application_domain", ""),
+                "application_protocol": packet_data.get("application_protocol") or packet_data.get("protocol") or protocol,
+                "http_host": packet_data.get("http_host", ""),
+                "tls_sni": packet_data.get("tls_sni", ""),
+                "dns_query": packet_data.get("dns_query", ""),
+                "payload_preview": packet_data.get("payload_preview", ""),
+                "payload_hex_preview": packet_data.get("payload_hex_preview", ""),
+                "payload_length": packet_data.get("payload_length", 0),
+                "packet_size": packet_data.get("packet_size", size),
+            }
+
         direction = "incoming" if src_ip != my_ip else "outgoing"
-        update_stats(src_ip, src_port, dst_ip, dst_port, protocol, size, direction)
+        update_stats(src_ip, src_port, dst_ip, dst_port, protocol, size, direction, **extra_fields)
 
     except Exception as e:
         print(f"[ERROR] Packet processing error: {e}")
@@ -272,10 +293,10 @@ def combined_packet_handler(pkt):
     """Main packet handler combining traffic analysis and ML detection"""
     try:
         size = len(bytes(pkt))
-        if is_irrelevant_packet(pkt, size):
-            return
-        process_packet_json(pkt)
         packet_data, alerts = inspect_dpi_packet(pkt, local_ip=my_ip)
+        if FILTER_NOISY_PACKETS and is_irrelevant_packet(pkt, size):
+            return
+        process_packet_json(pkt, packet_data=packet_data)
         if alerts and alert_callback:
             for alert in alerts:
                 packet_info = alert.get("packet_data", packet_data) or packet_data
@@ -316,6 +337,7 @@ def run_prediction_after_interval(interval_sec):
 # Start sniffing
 print(f"[*] Starting network packet capture on interface: {iface}")
 print(f"[*] Local IP: {my_ip}")
+print(f"[*] Noisy packet filter: {'ENABLED' if FILTER_NOISY_PACKETS else 'DISABLED'}")
 if ML_ENABLED:
     print("[+] ML threat detection: ENABLED")
     run_prediction_after_interval(10)

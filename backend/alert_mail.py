@@ -3,6 +3,37 @@ import os
 from email.mime.text import MIMEText
 from pathlib import Path
 import json
+import threading
+from datetime import datetime, timedelta
+
+
+_alert_lock = threading.Lock()
+_sent_alert_signatures = set()
+_ALERT_HISTORY_FILE = Path(__file__).parent / ".ntm_alert_history.json"
+
+
+def _load_alert_history():
+    """Load previously sent alerts from file."""
+    try:
+        if _ALERT_HISTORY_FILE.exists():
+            data = json.loads(_ALERT_HISTORY_FILE.read_text())
+            return set(data.get("sent_signatures", []))
+    except Exception:
+        pass
+    return set()
+
+
+def _save_alert_history():
+    """Persist alert signatures to file."""
+    try:
+        _ALERT_HISTORY_FILE.write_text(
+            json.dumps({"sent_signatures": list(_sent_alert_signatures)})
+        )
+    except Exception as e:
+        print(f"[ALERT HISTORY] Failed to save: {e}")
+
+
+_sent_alert_signatures = _load_alert_history()
 
 
 def _read_saved_email_settings():
@@ -95,6 +126,15 @@ def _save_email_to_file(subject, body, sender, receiver):
 
 
 def alert_callback(attack_type, src, dst, protocol):
+    signature = f"{attack_type}|{src}|{dst}|{protocol}".lower().strip()
+
+    with _alert_lock:
+        if signature in _sent_alert_signatures:
+            print(f"[ALERT CALLBACK] Duplicate alert skipped: {attack_type}, {src} → {dst}, Protocol: {protocol}")
+            return False
+        _sent_alert_signatures.add(signature)
+        _save_alert_history()
+
     print(f"[ALERT CALLBACK] Attack Detected: {attack_type}, {src} → {dst}, Protocol: {protocol}")
     subject = f"[ALERT] {attack_type} Detected"
     body = (
@@ -105,4 +145,9 @@ def alert_callback(attack_type, src, dst, protocol):
         f"Protocol: {protocol}\n\n"
         f"Please check the Network Traffic Monitor for details."
     )
-    send_email_alert(subject, body)
+    sent = send_email_alert(subject, body)
+    if not sent:
+        with _alert_lock:
+            _sent_alert_signatures.discard(signature)
+            _save_alert_history()
+    return sent

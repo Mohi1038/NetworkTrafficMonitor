@@ -117,7 +117,7 @@ def get_process_name_by_port(port):
     port_process_cache[port] = None
     return None
 
-def update_stats(src_ip, src_port, dst_ip, dst_port, protocol, size, direction):
+def update_stats(src_ip, src_port, dst_ip, dst_port, protocol, size, direction, **extra_fields):
     with lock:
         if direction == "incoming":
             stats["total_incoming_bytes"] += size
@@ -136,20 +136,25 @@ def update_stats(src_ip, src_port, dst_ip, dst_port, protocol, size, direction):
             ip_key = dst_ip
             port = dst_port
 
-            stats["top_ips"][ip_key]["hostname"] = get_hostname(ip_key)
+            stats["top_ips"][ip_key]["hostname"] = extra_fields.get("dst_domain") or get_hostname(ip_key)
             stats["top_ips"][ip_key]["app"] = get_process_name_by_port(port)
             stats["top_ips"][ip_key]["outgoing_bytes"]+= size
         else:
             ip_key = src_ip
             port = src_port
 
-            stats["top_ips"][ip_key]["hostname"] = get_hostname(ip_key)
+            stats["top_ips"][ip_key]["hostname"] = extra_fields.get("src_domain") or get_hostname(ip_key)
             stats["top_ips"][ip_key]["app"] = get_process_name_by_port(port)
             stats["top_ips"][ip_key]["incoming_bytes"]+= size
 
         stats["protocol_distribution"][protocol] += size
 
-        stats["traffic_table"].append({
+        src_domain = extra_fields.get("src_domain", "")
+        dst_domain = extra_fields.get("dst_domain", "")
+        application_domain = extra_fields.get("application_domain", "")
+        application_protocol = extra_fields.get("application_protocol", protocol)
+
+        traffic_entry = {
             "timestamp": time.strftime("%H:%M:%S"),
             "src_ip": src_ip,
             "src_port": src_port,
@@ -157,8 +162,18 @@ def update_stats(src_ip, src_port, dst_ip, dst_port, protocol, size, direction):
             "dst_port": dst_port,
             "protocol": protocol,
             "direction": direction,
-            "bytes": size
-        })
+            "bytes": size,
+            "src_domain": src_domain,
+            "dst_domain": dst_domain,
+            "application_domain": application_domain,
+            "application_protocol": application_protocol,
+        }
+
+        for key, value in extra_fields.items():
+            if key not in traffic_entry and value is not None:
+                traffic_entry[key] = value
+
+        stats["traffic_table"].append(traffic_entry)
 
 # Save JSON every second (batched write)
 def json_writer_loop():
