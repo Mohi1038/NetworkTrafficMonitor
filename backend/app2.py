@@ -39,6 +39,7 @@ from flask_cors import CORS
 import threading
 from flask import request
 from pack_sniffer import start_sniffing, set_alert_callback
+from dpi_engine import get_dpi_engine
 from utils import stats
 import json
 from collections import defaultdict
@@ -226,6 +227,26 @@ def rule_alerts():
         alerts = rule_engine.get_alerts(limit=100)
         stats_data = rule_engine.get_rule_statistics()
         return jsonify({"success": True, "alerts": alerts, "statistics": stats_data}), 200
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+# ---------- Deep Packet Inspection Endpoints ----------
+@app.route("/api/dpi/alerts")
+def dpi_alerts():
+    try:
+        dpi_engine = get_dpi_engine()
+        alerts = dpi_engine.get_alerts(limit=100)
+        return jsonify({"success": True, "alerts": alerts, "total": len(alerts)}), 200
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/dpi/stats")
+def dpi_stats():
+    try:
+        dpi_engine = get_dpi_engine()
+        return jsonify({"success": True, "statistics": dpi_engine.get_statistics()}), 200
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
