@@ -13,10 +13,12 @@
 
 The Network Traffic Monitor is a comprehensive solution for real-time network analysis, providing:
 - Live traffic visualization and protocol breakdowns
-- Bandwidth consumption monitoring by application/IP
-- Machine learning-based intrusion detection system
-- Alerting for suspicious network activities
-- Cross-platform support (Windows, macOS, Linux)
+- **Deep Packet Inspection (DPI)**: Extracts HTTP Host, TLS SNI, and DNS queries for granular visibility
+- **Security Rule Engine**: Customizable signatures for detecting specific patterns
+- **Bandwidth Monitoring**: Capacity measurement by application/IP
+- **ML-powered Threat Detection**: Real-time anomaly detection using Random Forest
+- **Alerting**: Multi-channel notifications for suspicious activities
+- **Cross-platform**: Native performance on Windows, macOS, and Linux
 
 ## ✨ Key Features
 
@@ -24,10 +26,11 @@ The Network Traffic Monitor is a comprehensive solution for real-time network an
 |---------|-------------|
 | 🎨 Real-time Visualization | Interactive dashboards showing live network traffic |
 | 📊 Protocol Analytics | Detailed breakdown by protocol (TCP/UDP/ICMP etc.) |
-| 🔍 Traffic Filtering | Advanced filtering of captured packets |
+| �️ DPI Engine | Advanced Deep Packet Inspection for HTTP Hosts, TLS SNI, and DNS |
+| 🔍 Traffic Filtering | Advanced filtering of captured packets with canonical domain mapping |
 | ⚡ Performance Metrics | Download/upload speed monitoring |
 | 🤖 Threat Detection | ML-powered anomaly detection using Random Forest |
-| 🚨 Alert System | Email notifications for suspicious activities |
+| 🚨 Alert System | Email notifications for suspicious activities and DPI-flagged threats |
 | 💻 Cross-Platform | Runs on Windows, macOS, and Linux |
 
 ## 🛠️ Technical Stack
@@ -36,6 +39,7 @@ The Network Traffic Monitor is a comprehensive solution for real-time network an
 - **Core**: Python 3.8+
 - **Framework**: Flask + Flask-CORS
 - **Networking**: Scapy (packet capture)
+- **Security**: DPI Engine (custom protocol parser), Rule Engine
 - **ML**: scikit-learn, joblib (pre-trained Random Forest model)
 - **Utils**: psutil, pandas, NumPy, python-dotenv
 

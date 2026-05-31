@@ -1,1 +1,1 @@
-{"sent_signatures": ["dpi: suspicious dns queries|192.168.31.97|192.168.31.1|dns"]}
+{"sent_signatures": ["dpi: suspicious dns queries|192.168.31.97|8.8.8.8|dns", "dpi: suspicious dns queries|192.168.31.97|192.168.31.1|dns", "dpi: suspicious dns queries|192.168.31.97|8.8.4.4|dns"]}

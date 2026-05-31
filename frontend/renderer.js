@@ -69,7 +69,10 @@ async function loadConsentStatus() {
   try {
     const status = window.api?.getConsentStatus
       ? await window.api.getConsentStatus()
-      : await apiFetch('/api/consent/status');
+      : await apiFetch('/api/consent/status').then(res => {
+          if (!res.ok) throw new Error(`HTTP error: ${res.status}`);
+          return res.json();
+        });
 
     consentGranted = Boolean(status?.allowed);
     return status;
@@ -93,7 +96,10 @@ async function requestConsent() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ allowed: true })
-        }).then((res) => res.json());
+        }).then((res) => {
+          if (!res.ok) throw new Error(`HTTP error: ${res.status}`);
+          return res.json();
+        });
 
     consentGranted = Boolean(response?.success);
     if (consentGranted) {
@@ -435,7 +441,7 @@ async function fetchData() {
 
     const rawData = window.api?.fetchTraffic
       ? await window.api.fetchTraffic()
-      : await fetch(TRAFFIC_ENDPOINT, { signal: controller.signal }).then((res) => {
+      : await apiFetch(TRAFFIC_ENDPOINT, { signal: controller.signal }).then((res) => {
           console.log('[FetchData] Direct fetch response:', res.status);
           if (!res.ok) {
             throw new Error(`HTTP error: ${res.status}`);
@@ -535,6 +541,10 @@ function updateTrafficTable(data) {
   // Filter and prepare data
   allFilteredTraffic = [];
   tableData.slice(-200).reverse().forEach(entry => {
+    function computeResolvedHost(e) {
+      return String(e.dns_query || e.tls_sni || e.http_host || e.application_domain || e.dst_domain || '').toLowerCase();
+    }
+
     const searchableValues = [
       entry.src_ip,
       entry.dst_ip,
@@ -548,6 +558,7 @@ function updateTrafficTable(data) {
       entry.http_host,
       entry.tls_sni,
       entry.dns_query,
+      computeResolvedHost(entry),
       entry.direction,
       entry.payload_preview
     ].map(value => String(value || '').toLowerCase());
@@ -567,6 +578,9 @@ function updateTrafficTable(data) {
 
     allFilteredTraffic.push(entry);
   });
+
+  // Store filtered traffic so View button can access full details
+  lastTrafficRows = allFilteredTraffic;
 
   // Reset to page 1 when filters change
   currentPage = 1;
@@ -593,6 +607,7 @@ function renderTablePage() {
       <td title="${escapeHtml(entry.src_domain || '')}">${escapeHtml(entry.src_domain || '-')}</td>
       <td>${escapeHtml(`${entry.dst_ip || 'N/A'}:${entry.dst_port || 'N/A'}`)}</td>
       <td title="${escapeHtml(entry.dst_domain || '')}">${escapeHtml(entry.dst_domain || '-')}</td>
+      <td title="${escapeHtml((entry.dns_query || entry.tls_sni || entry.http_host || entry.application_domain || entry.dst_domain) || '')}">${escapeHtml((entry.dns_query || entry.tls_sni || entry.http_host || entry.application_domain || entry.dst_domain) || '-')}</td>
       <td>${escapeHtml(entry.protocol || 'UNKNOWN')}</td>
       <td>${escapeHtml(entry.application_protocol || entry.protocol || 'UNKNOWN')}</td>
       <td>${escapeHtml(formatBytes(entry.bytes))}</td>
@@ -630,6 +645,7 @@ function openTrafficPacketDetail(entry) {
     http_host: entry.http_host || '',
     tls_sni: entry.tls_sni || '',
     dns_query: entry.dns_query || '',
+    resolved_host: (entry.dns_query || entry.tls_sni || entry.http_host || entry.application_domain || entry.dst_domain) || '',
     bytes: entry.bytes || 0
   };
 
@@ -640,6 +656,7 @@ function openTrafficPacketDetail(entry) {
       <div>Domains: ${escapeHtml(details.source_domain)} → ${escapeHtml(details.destination_domain)}</div>
       <div>Application: ${escapeHtml(details.application_protocol)}</div>
       <div>Application domain: ${escapeHtml(details.application_domain)}</div>
+      <div>Resolved Host: ${escapeHtml(details.resolved_host || '-')}</div>
       <div>Direction: ${escapeHtml(details.direction)}</div>
       <div>Size: ${escapeHtml(formatBytes(details.bytes))}</div>
     </div>
